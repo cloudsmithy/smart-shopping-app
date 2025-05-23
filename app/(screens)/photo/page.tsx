@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
+import { uploadPhoto, recognizeImage } from "@/api/ai";
 
 export default function PhotoPage() {
   const router = useRouter();
@@ -16,6 +17,8 @@ export default function PhotoPage() {
   const [facingMode, setFacingMode] = useState<"user" | "environment">(
     "environment"
   );
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
 
   const setupCamera = async () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -97,6 +100,53 @@ export default function PhotoPage() {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach((track) => track.stop());
       videoRef.current.srcObject = null;
+    }
+  };
+
+  const dataURLtoFile = (dataurl: string, filename: string): File => {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  const handleSubmit = async () => {
+    if (!photoUrl) return;
+
+    try {
+      setIsUploading(true);
+      
+      // Convert dataURL to File
+      const file = dataURLtoFile(photoUrl, 'photo.jpg');
+      
+      // Upload photo to get URL
+      const uploadResponse = await uploadPhoto(file);
+      const imageUrl = uploadResponse.url;
+      
+      setIsUploading(false);
+      setIsRecognizing(true);
+      
+      // Recognize image
+      const recognizeResponse = await recognizeImage(imageUrl);
+      
+      // Store results in sessionStorage to pass to chat page
+      sessionStorage.setItem('photoData', JSON.stringify({
+        imageUrl,
+        photoUrl,
+        recognitionResult: recognizeResponse.result
+      }));
+      
+      stopCamera();
+      router.push('/chat');
+    } catch (error) {
+      console.error('Error uploading or recognizing photo:', error);
+      setIsUploading(false);
+      setIsRecognizing(false);
     }
   };
 
@@ -183,13 +233,11 @@ export default function PhotoPage() {
 
             <button
               type="button"
-              onClick={() => {
-                stopCamera();
-                router.push("/chat");
-              }}
-              className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm hover:bg-green-600 transition-colors"
+              onClick={handleSubmit}
+              disabled={isUploading || isRecognizing}
+              className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              提交
+              {isUploading ? "上传中..." : isRecognizing ? "识别中..." : "提交"}
             </button>
           </>
         )}

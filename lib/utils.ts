@@ -40,6 +40,15 @@ axiosInstance.interceptors.response.use(
 export default axiosInstance;
 
 export const post = async (url: string, options?: any): Promise<any> => {
-  const response = await axiosInstance.post(url, options);
+  const config: any = {};
+  
+  // Handle FormData for file uploads
+  if (options instanceof FormData) {
+    config.headers = {
+      'Content-Type': 'multipart/form-data'
+    };
+  }
+  
+  const response = await axiosInstance.post(url, options, config);
   return response.data;
 };
