@@ -39,6 +39,7 @@ axiosInstance.interceptors.response.use(
 
 export default axiosInstance;
 
-export const post = (url: string, options?: any): Promise<any> => {
-  return axiosInstance.post(url, options).then((response) => response.data);
+export const post = async (url: string, options?: any): Promise<any> => {
+  const response = await axiosInstance.post(url, options);
+  return response.data;
 };

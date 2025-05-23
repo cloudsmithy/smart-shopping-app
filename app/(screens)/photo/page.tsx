@@ -2,12 +2,10 @@
 
 import { ChevronLeft, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
-interface PhotoScreenProps {
-  onNavigate: (screen: "home" | "photo" | "chat" | "voice") => void;
-}
-
-export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
+export default function PhotoPage() {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCamera, setHasCamera] = useState(false);
@@ -18,9 +16,7 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
     "environment"
   );
 
-  // Setup or restart camera
   const setupCamera = async () => {
-    // Stop any existing stream first
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach((track) => track.stop());
@@ -50,41 +46,34 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
     }
   };
 
-  // Initialize camera on component mount
   useEffect(() => {
     setupCamera();
 
-    // Cleanup function to stop camera when component unmounts
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
         tracks.forEach((track) => track.stop());
       }
     };
-  }, [facingMode]); // Re-run when facingMode changes
+  }, [facingMode]);
 
-  // Function to capture photo
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current || !hasCamera) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw current video frame to canvas
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Convert canvas to data URL
       const dataUrl = canvas.toDataURL("image/jpeg");
       setPhotoUrl(dataUrl);
       setPhotoTaken(true);
 
-      // Stop the camera stream
       if (video.srcObject) {
         const tracks = (video.srcObject as MediaStream).getTracks();
         tracks.forEach((track) => track.stop());
@@ -92,19 +81,16 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
     }
   };
 
-  // Function to retake photo
   const retakePhoto = () => {
     setPhotoTaken(false);
     setPhotoUrl(null);
     setupCamera();
   };
 
-  // Function to flip camera
   const flipCamera = () => {
     setFacingMode((prevMode) => (prevMode === "user" ? "environment" : "user"));
   };
 
-  // Function to stop the camera
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
@@ -120,7 +106,7 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
         <button
           onClick={() => {
             stopCamera();
-            onNavigate("home");
+            router.push("/");
           }}
           className="p-1"
         >
@@ -132,7 +118,6 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
 
       {/* Camera View / Photo Preview */}
       <div className="flex-1 relative bg-[#000000]">
-        {/* Video element for camera feed */}
         <video
           ref={videoRef}
           autoPlay
@@ -142,19 +127,16 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
           }`}
         />
 
-        {/* Canvas for capturing photos (hidden) */}
         <canvas ref={canvasRef} className="hidden" />
 
-        {/* Photo preview */}
         {photoTaken && photoUrl && (
           <img
-            src={photoUrl || "/placeholder.svg"}
+            src={photoUrl}
             alt="Captured photo"
             className="absolute inset-0 w-full h-full object-cover"
           />
         )}
 
-        {/* Loading/error message */}
         {!hasCamera && !photoTaken && (
           <div className="absolute inset-0 flex items-center justify-center text-white">
             {cameraError || "正在加载摄像头..."}
@@ -202,7 +184,7 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
             <button
               onClick={() => {
                 stopCamera();
-                onNavigate("chat");
+                router.push("/chat");
               }}
               className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm"
             >

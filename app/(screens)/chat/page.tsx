@@ -1,17 +1,25 @@
 "use client";
+
 import { ChevronLeft, Camera, Check } from "lucide-react";
-import MicrophoneButton from "./microphone-button";
+import { useRouter } from "next/navigation";
+import MicrophoneButton from "@/components/microphone-button";
 
-interface ChatScreenProps {
-  onNavigate: (screen: "home" | "photo" | "chat" | "voice") => void;
-}
+export default function ChatPage() {
+  const router = useRouter();
 
-export default function ChatScreen({ onNavigate }: ChatScreenProps) {
+  const handleNavigate = (screen: string) => {
+    if (screen === "home") {
+      router.push("/");
+    } else if (screen === "photo") {
+      router.push("/photo");
+    }
+  };
+
   return (
     <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[100vh] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#f2f2f2]">
-        <button onClick={() => onNavigate("home")} className="p-1">
+        <button onClick={() => router.push("/")} className="p-1">
           <ChevronLeft className="w-5 h-5 text-[#000000]" />
         </button>
         <div className="font-medium text-center flex-1">对话页</div>
@@ -38,7 +46,7 @@ export default function ChatScreen({ onNavigate }: ChatScreenProps) {
                 <Check className="w-4 h-4 text-[#07c160]" />
               </div>
               <button
-                onClick={() => onNavigate("photo")}
+                onClick={() => router.push("/photo")}
                 className="text-[#07c160] text-sm"
               >
                 识别有误 重新拍照
@@ -75,12 +83,12 @@ export default function ChatScreen({ onNavigate }: ChatScreenProps) {
       {/* Input Area */}
       <div className="p-2 flex items-center justify-center gap-4 bg-[#f5f5f5] border-t border-[#dadada]">
         <button
-          onClick={() => onNavigate("photo")}
+          onClick={() => router.push("/photo")}
           className="w-12 h-12 bg-[#000000] rounded-full flex items-center justify-center"
         >
           <Camera className="w-6 h-6 text-white" />
         </button>
-        <MicrophoneButton onNavigate={onNavigate} />
+        <MicrophoneButton onNavigate={handleNavigate} />
       </div>
     </div>
   );
