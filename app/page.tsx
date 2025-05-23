@@ -6,13 +6,21 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function HomePage() {
   const { token, loading, error } = useAuth();
-  
+
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">正在初始化...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        正在初始化...
+      </div>
+    );
   }
-  
+
   if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500">初始化失败: {error}</div>;
+    return (
+      <div className="flex justify-center items-center h-screen text-red-500">
+        初始化失败: {error}
+      </div>
+    );
   }
 
   return (
@@ -31,7 +39,8 @@ export default function HomePage() {
               <div className="w-2 h-2 bg-white rounded-full"></div>
             </div>
             <div className="text-sm flex items-center">
-              上海市黄浦区马当路富民超市 <ChevronDown className="w-4 h-4 ml-1" />
+              上海市黄浦区马当路富民超市{" "}
+              <ChevronDown className="w-4 h-4 ml-1" />
             </div>
           </div>
 
@@ -72,15 +81,22 @@ export default function HomePage() {
 
           {/* Product List */}
           <div className="flex-1 overflow-auto px-4 mt-2">
-            {["安全的食用油", "无添加剂的深海鱼", "正宗的五常大米"].map((item, index) => (
-              <div key={index} className="flex items-center justify-between py-3 border-b border-[#f2f2f2]">
-                <div>
-                  <div className="text-sm">{item}</div>
-                  <div className="text-xs text-[#979797] mt-1">选购指南 今日在售</div>
+            {["安全的食用油", "无添加剂的深海鱼", "正宗的五常大米"].map(
+              (item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between py-3 border-b border-[#f2f2f2]"
+                >
+                  <div>
+                    <div className="text-sm">{item}</div>
+                    <div className="text-xs text-[#979797] mt-1">
+                      选购指南 今日在售
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#979797]" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-[#979797]" />
-              </div>
-            ))}
+              )
+            )}
             <div className="flex justify-center mt-4 mb-2">
               <button className="text-xs text-[#979797] flex items-center">
                 更多 <ChevronDown className="w-3 h-3 ml-1" />
