@@ -1,4 +1,4 @@
-import { post } from "@/utils/request";
+import { post } from "@/lib/utils";
 
 // 用户认证相关
 export const initUser = (deviceId: string) => {
