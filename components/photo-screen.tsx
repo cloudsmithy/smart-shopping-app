@@ -1,124 +1,126 @@
-"use client"
+"use client";
 
-import { ChevronLeft, RefreshCw } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { ChevronLeft, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface PhotoScreenProps {
-  onNavigate: (screen: "home" | "photo" | "chat" | "voice") => void
+  onNavigate: (screen: "home" | "photo" | "chat" | "voice") => void;
 }
 
 export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [hasCamera, setHasCamera] = useState(false)
-  const [cameraError, setCameraError] = useState("")
-  const [photoTaken, setPhotoTaken] = useState(false)
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment")
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasCamera, setHasCamera] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [photoTaken, setPhotoTaken] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">(
+    "environment"
+  );
 
   // Setup or restart camera
   const setupCamera = async () => {
     // Stop any existing stream first
     if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
-      tracks.forEach((track) => track.stop())
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach((track) => track.stop());
     }
 
-    setHasCamera(false)
-    setCameraError("")
+    setHasCamera(false);
+    setCameraError("");
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode },
         audio: false,
-      })
+      });
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
-            videoRef.current.play()
-            setHasCamera(true)
+            videoRef.current.play();
+            setHasCamera(true);
           }
-        }
+        };
       }
     } catch (err) {
-      console.error("Error accessing camera:", err)
-      setCameraError("无法访问摄像头，请确保已授予摄像头权限。")
+      console.error("Error accessing camera:", err);
+      setCameraError("无法访问摄像头，请确保已授予摄像头权限。");
     }
-  }
+  };
 
   // Initialize camera on component mount
   useEffect(() => {
-    setupCamera()
+    setupCamera();
 
     // Cleanup function to stop camera when component unmounts
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
-        tracks.forEach((track) => track.stop())
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
       }
-    }
-  }, [facingMode]) // Re-run when facingMode changes
+    };
+  }, [facingMode]); // Re-run when facingMode changes
 
   // Function to capture photo
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current || !hasCamera) return
+    if (!videoRef.current || !canvasRef.current || !hasCamera) return;
 
-    const video = videoRef.current
-    const canvas = canvasRef.current
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
 
     // Set canvas dimensions to match video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
     // Draw current video frame to canvas
-    const ctx = canvas.getContext("2d")
+    const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       // Convert canvas to data URL
-      const dataUrl = canvas.toDataURL("image/jpeg")
-      setPhotoUrl(dataUrl)
-      setPhotoTaken(true)
+      const dataUrl = canvas.toDataURL("image/jpeg");
+      setPhotoUrl(dataUrl);
+      setPhotoTaken(true);
 
       // Stop the camera stream
       if (video.srcObject) {
-        const tracks = (video.srcObject as MediaStream).getTracks()
-        tracks.forEach((track) => track.stop())
+        const tracks = (video.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
       }
     }
-  }
+  };
 
   // Function to retake photo
   const retakePhoto = () => {
-    setPhotoTaken(false)
-    setPhotoUrl(null)
-    setupCamera()
-  }
+    setPhotoTaken(false);
+    setPhotoUrl(null);
+    setupCamera();
+  };
 
   // Function to flip camera
   const flipCamera = () => {
-    setFacingMode((prevMode) => (prevMode === "user" ? "environment" : "user"))
-  }
+    setFacingMode((prevMode) => (prevMode === "user" ? "environment" : "user"));
+  };
 
   // Function to stop the camera
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
-      tracks.forEach((track) => track.stop())
-      videoRef.current.srcObject = null
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
     }
-  }
+  };
 
   return (
-    <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[600px] flex flex-col">
+    <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[100vh] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#f2f2f2]">
         <button
           onClick={() => {
-            stopCamera()
-            onNavigate("home")
+            stopCamera();
+            onNavigate("home");
           }}
           className="p-1"
         >
@@ -135,7 +137,9 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
           ref={videoRef}
           autoPlay
           playsInline
-          className={`absolute inset-0 w-full h-full object-cover ${photoTaken || !hasCamera ? "hidden" : "block"}`}
+          className={`absolute inset-0 w-full h-full object-cover ${
+            photoTaken || !hasCamera ? "hidden" : "block"
+          }`}
         />
 
         {/* Canvas for capturing photos (hidden) */}
@@ -159,9 +163,9 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
       </div>
 
       {/* Camera Controls */}
-      <div className="bg-[#000000] py-4 px-6 flex items-center justify-between">
-        <div className="w-8 h-8"></div>
-        {!photoTaken ? (
+      {!photoTaken ? (
+        <div className="bg-[#000000] py-4 px-6 flex items-center justify-between">
+          <div className="w-8 h-8"></div>
           <button
             onClick={capturePhoto}
             className="w-14 h-14 rounded-full border-2 border-white flex items-center justify-center"
@@ -169,35 +173,44 @@ export default function PhotoScreen({ onNavigate }: PhotoScreenProps) {
           >
             <div className="w-12 h-12 bg-white rounded-full"></div>
           </button>
-        ) : (
-          <div className="w-14 h-14"></div> // Placeholder when photo is taken
-        )}
-        <button
-          onClick={flipCamera}
-          disabled={photoTaken}
-          className={`w-8 h-8 flex items-center justify-center ${photoTaken ? "opacity-50" : ""}`}
-        >
-          <RefreshCw className="w-5 h-5 text-white" />
-        </button>
-      </div>
+
+          <button
+            onClick={flipCamera}
+            disabled={photoTaken}
+            className={`w-8 h-8 flex items-center justify-center ${
+              photoTaken ? "opacity-50" : ""
+            }`}
+          >
+            <RefreshCw className="w-5 h-5 text-white" />
+          </button>
+        </div>
+      ) : (
+        <div></div>
+      )}
 
       {/* Action Buttons */}
       <div className="bg-white py-4 flex items-center justify-center gap-4">
         {photoTaken && (
-          <button onClick={retakePhoto} className="px-6 py-2 bg-[#f2f2f2] text-[#000000] rounded-full text-sm">
-            重新拍
-          </button>
+          <>
+            <button
+              onClick={retakePhoto}
+              className="px-6 py-2 bg-[#f2f2f2] text-[#000000] rounded-full text-sm"
+            >
+              重新拍
+            </button>
+
+            <button
+              onClick={() => {
+                stopCamera();
+                onNavigate("chat");
+              }}
+              className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm"
+            >
+              提交
+            </button>
+          </>
         )}
-        <button
-          onClick={() => {
-            stopCamera()
-            onNavigate("chat")
-          }}
-          className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm"
-        >
-          提交
-        </button>
       </div>
     </div>
-  )
+  );
 }

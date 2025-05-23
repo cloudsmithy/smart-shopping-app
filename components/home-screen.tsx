@@ -8,7 +8,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
-    <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[600px] flex flex-col">
+    <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[100vh] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#f2f2f2]">
         <div className="font-medium text-center flex-1">首页</div>
