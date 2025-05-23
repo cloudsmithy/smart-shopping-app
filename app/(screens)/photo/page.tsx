@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronLeft, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function PhotoPage() {
   const router = useRouter();
@@ -101,20 +102,14 @@ export default function PhotoPage() {
 
   return (
     <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[100vh] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[#f2f2f2]">
-        <button
-          onClick={() => {
-            stopCamera();
-            router.push("/");
-          }}
-          className="p-1"
-        >
-          <ChevronLeft className="w-5 h-5 text-[#000000]" />
-        </button>
-        <div className="font-medium text-center flex-1">拍摄页</div>
-        <div className="w-5"></div>
-      </div>
+      <PageHeader 
+        title="拍摄页"
+        showBackButton
+        onBack={() => {
+          stopCamera();
+          router.push("/");
+        }}
+      />
 
       {/* Camera View / Photo Preview */}
       <div className="flex-1 relative bg-[#000000]">
@@ -149,19 +144,23 @@ export default function PhotoPage() {
         <div className="bg-[#000000] py-4 px-6 flex items-center justify-between">
           <div className="w-8 h-8"></div>
           <button
+            type="button"
             onClick={capturePhoto}
             className="w-14 h-14 rounded-full border-2 border-white flex items-center justify-center"
             disabled={!hasCamera}
+            aria-label="拍照"
           >
             <div className="w-12 h-12 bg-white rounded-full"></div>
           </button>
 
           <button
+            type="button"
             onClick={flipCamera}
             disabled={photoTaken}
             className={`w-8 h-8 flex items-center justify-center ${
               photoTaken ? "opacity-50" : ""
             }`}
+            aria-label="切换摄像头"
           >
             <RefreshCw className="w-5 h-5 text-white" />
           </button>
@@ -175,18 +174,20 @@ export default function PhotoPage() {
         {photoTaken && (
           <>
             <button
+              type="button"
               onClick={retakePhoto}
-              className="px-6 py-2 bg-[#f2f2f2] text-[#000000] rounded-full text-sm"
+              className="px-6 py-2 bg-[#f2f2f2] text-[#000000] rounded-full text-sm hover:bg-gray-300 transition-colors"
             >
               重新拍
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 stopCamera();
                 router.push("/chat");
               }}
-              className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm"
+              className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm hover:bg-green-600 transition-colors"
             >
               提交
             </button>

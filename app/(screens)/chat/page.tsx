@@ -1,7 +1,9 @@
 "use client";
 
-import { ChevronLeft, Camera, Check } from "lucide-react";
+import { Camera, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageContainer } from "@/components/ui/page-container";
 import MicrophoneButton from "@/components/microphone-button";
 
 export default function ChatPage() {
@@ -16,15 +18,12 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[100vh] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[#f2f2f2]">
-        <button onClick={() => router.push("/")} className="p-1">
-          <ChevronLeft className="w-5 h-5 text-[#000000]" />
-        </button>
-        <div className="font-medium text-center flex-1">对话页</div>
-        <div className="w-5"></div>
-      </div>
+    <PageContainer>
+      <PageHeader 
+        title="对话页"
+        showBackButton
+        onBack={() => router.push("/")}
+      />
 
       {/* Chat Content */}
       <div className="flex-1 overflow-auto p-4 bg-[#f5f5f5]">
@@ -46,8 +45,9 @@ export default function ChatPage() {
                 <Check className="w-4 h-4 text-[#07c160]" />
               </div>
               <button
+                type="button"
                 onClick={() => router.push("/photo")}
-                className="text-[#07c160] text-sm"
+                className="text-[#07c160] text-sm hover:text-green-600 transition-colors"
               >
                 识别有误 重新拍照
               </button>
@@ -67,13 +67,22 @@ export default function ChatPage() {
             我有 3 个小忙可以帮您，请点击选择：
           </div>
           <div className="flex gap-2 justify-center">
-            <button className="bg-[#14171885] text-white text-xs py-2 px-6 rounded-lg h-[40px]">
+            <button 
+              type="button"
+              className="bg-[#14171885] text-white text-xs py-2 px-6 rounded-lg h-[40px] hover:bg-gray-600 transition-colors"
+            >
               食物对比
             </button>
-            <button className="bg-[#14171885] text-white text-xs py-2 px-6 rounded-lg h-[40px]">
+            <button 
+              type="button"
+              className="bg-[#14171885] text-white text-xs py-2 px-6 rounded-lg h-[40px] hover:bg-gray-600 transition-colors"
+            >
               全网比价
             </button>
-            <button className="bg-[#14171885] text-white text-xs py-2 px-6 rounded-lg h-[40px]">
+            <button 
+              type="button"
+              className="bg-[#14171885] text-white text-xs py-2 px-6 rounded-lg h-[40px] hover:bg-gray-600 transition-colors"
+            >
               卡路里计算
             </button>
           </div>
@@ -83,13 +92,15 @@ export default function ChatPage() {
       {/* Input Area */}
       <div className="p-2 flex items-center justify-center gap-4 bg-[#f5f5f5] border-t border-[#dadada]">
         <button
+          type="button"
           onClick={() => router.push("/photo")}
-          className="w-12 h-12 bg-[#000000] rounded-full flex items-center justify-center"
+          className="w-12 h-12 bg-[#000000] rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors"
+          aria-label="拍照"
         >
           <Camera className="w-6 h-6 text-white" />
         </button>
         <MicrophoneButton onNavigate={handleNavigate} />
       </div>
-    </div>
+    </PageContainer>
   );
 }
