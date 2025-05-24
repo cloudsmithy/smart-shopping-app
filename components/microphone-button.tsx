@@ -6,10 +6,14 @@ import type React from "react";
 
 interface MicrophoneButtonProps {
   onNavigate: (screen: string) => void;
+  onAudioRecorded?: (audioFile: File) => void;
+  isProcessing?: boolean;
 }
 
 export default function MicrophoneButton({
   onNavigate,
+  onAudioRecorded,
+  isProcessing = false,
 }: MicrophoneButtonProps) {
   const [isPressed, setIsPressed] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -56,14 +60,22 @@ export default function MicrophoneButton({
         throw new Error("Audio context not initialized");
       }
 
+      // Resume audio context if suspended
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setAudioStream(stream);
 
       // Create analyzer for visualizing audio
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Float32Array(bufferLength);
+      // Initialize with zeros to prevent NaN values
+      dataArray.fill(0);
 
       // Connect microphone to analyzer
       const source = audioContext.createMediaStreamSource(stream);
@@ -83,15 +95,24 @@ export default function MicrophoneButton({
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         // Process recorded audio
         const audioBlob = new Blob(audioChunksRef.current, {
           type: "audio/wav",
         });
         audioChunksRef.current = [];
 
-        // Here you could send the audio to a server or process it
-        console.log("Recording completed", audioBlob);
+        // Create File object and send to parent
+        if (audioBlob.size > 0 && onAudioRecorded) {
+          try {
+            const audioFile = new File([audioBlob], "recording.wav", {
+              type: "audio/wav",
+            });
+            onAudioRecorded(audioFile);
+          } catch (error) {
+            console.error("Error creating audio file:", error);
+          }
+        }
       };
 
       // Start recording
@@ -138,8 +159,14 @@ export default function MicrophoneButton({
     if (!analyserRef.current || !dataArrayRef.current) return;
 
     const updateVisualization = () => {
-      analyserRef.current!.getFloatTimeDomainData(dataArrayRef.current!);
-      setAudioData([...dataArrayRef.current!]);
+      if (analyserRef.current && dataArrayRef.current) {
+        analyserRef.current.getFloatTimeDomainData(dataArrayRef.current);
+        // Create a copy of the array to avoid reference issues
+        const dataArray = Array.from(dataArrayRef.current);
+        // Filter out NaN values and replace with 0
+        const cleanData = dataArray.map(value => isNaN(value) ? 0 : value);
+        setAudioData(new Float32Array(cleanData));
+      }
       animationFrameRef.current = requestAnimationFrame(updateVisualization);
     };
 
@@ -159,7 +186,7 @@ export default function MicrophoneButton({
     startRecording();
   };
 
-  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+  const handleTouchMove = () => {
     if (!isPressed) return;
   };
 
@@ -198,36 +225,46 @@ export default function MicrophoneButton({
       {isRecording && audioData && (
         <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 rounded-full p-2 w-32 h-8 flex items-center justify-center">
           <div className="flex items-center h-4 space-x-0.5">
-            {audioData
+            {Array.from(audioData)
               .filter((_, i) => i % 8 === 0)
               .slice(0, 16)
-              .map((value, index) => (
-                <div
-                  key={index}
-                  className="w-1 bg-white"
-                  style={{
-                    height: `${Math.abs(value) * 20 + 4}px`,
-                    opacity: isRecording ? 1 : 0.5,
-                  }}
-                ></div>
-              ))}
+              .map((value, index) => {
+                const height = Math.max(4, Math.min(16, Math.abs(value || 0) * 20 + 4));
+                return (
+                  <div
+                    key={index}
+                    className="w-1 bg-white"
+                    style={{
+                      height: `${height}px`,
+                      opacity: isRecording ? 1 : 0.5,
+                    }}
+                  />
+                );
+              })}
           </div>
         </div>
       )}
 
       <button
-        className="w-16 h-16 bg-[#000000] rounded-full flex items-center justify-center"
+        type="button"
+        className={`w-14 h-14 bg-[#000000] rounded-full flex items-center justify-center shadow-lg transition-all ${
+          isProcessing ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-800"
+        }`}
         style={buttonStyle}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleTouchStart}
-        onMouseMove={handleTouchMove}
-        onMouseUp={handleTouchEnd}
-        onMouseLeave={handleTouchEnd}
+        onTouchStart={isProcessing ? undefined : handleTouchStart}
+        onTouchMove={isProcessing ? undefined : handleTouchMove}
+        onTouchEnd={isProcessing ? undefined : handleTouchEnd}
+        onMouseDown={isProcessing ? undefined : handleTouchStart}
+        onMouseMove={isProcessing ? undefined : handleTouchMove}
+        onMouseUp={isProcessing ? undefined : handleTouchEnd}
+        onMouseLeave={isProcessing ? undefined : handleTouchEnd}
+        disabled={isProcessing}
+        aria-label="录音按钮"
       >
         <Mic
-          className={`w-8 h-8 text-white ${isRecording ? "animate-pulse" : ""}`}
+          className={`w-7 h-7 text-white ${
+            isRecording || isProcessing ? "animate-pulse" : ""
+          }`}
         />
       </button>
     </div>

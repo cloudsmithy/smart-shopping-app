@@ -48,7 +48,7 @@ export default function HomePage() {
       <ProductRecognition />
 
       {/* Voice Assistant Button */}
-      <Link href={ROUTES.photo} className="mx-4 mt-3">
+      <Link href="/chat?from=home" className="mx-4 mt-3">
         <button 
           type="button"
           className="w-full bg-[#07c160] text-white py-3 rounded-md text-center hover:bg-green-600 transition-colors"

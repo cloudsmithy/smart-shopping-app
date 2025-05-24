@@ -21,7 +21,7 @@ export const SAMPLE_PRODUCTS = [
   { name: "安全的食用油", description: "选购指南 今日在售" },
   { name: "无添加剂的深海鱼", description: "选购指南 今日在售" },
   { name: "正宗的五常大米", description: "选购指南 今日在售" },
-] as const;
+];
 
 // 路由常量
 export const ROUTES = {
