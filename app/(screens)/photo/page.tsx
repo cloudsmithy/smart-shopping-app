@@ -42,7 +42,7 @@ export default function PhotoPage() {
       // 改进的兼容性检查 - 专门针对移动端
       if (
         !navigator.mediaDevices &&
-        !navigator.getUserMedia &&
+        !(navigator as any).getUserMedia &&
         !(navigator as any).webkitGetUserMedia
       ) {
         throw new Error("浏览器不支持摄像头功能");
@@ -53,7 +53,7 @@ export default function PhotoPage() {
         navigator.mediaDevices && navigator.mediaDevices.getUserMedia
           ? navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
           : (
-              navigator.getUserMedia ||
+              (navigator as any).getUserMedia ||
               (navigator as any).webkitGetUserMedia ||
               (navigator as any).mozGetUserMedia ||
               (navigator as any).msGetUserMedia
@@ -96,7 +96,7 @@ export default function PhotoPage() {
         },
       ];
 
-      let stream = null;
+      let stream: MediaStream | null = null;
       let lastError = null;
 
       for (const constraints of constraintOptions) {
@@ -105,7 +105,7 @@ export default function PhotoPage() {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
           } else {
             // 兼容旧版浏览器
-            stream = await new Promise((resolve, reject) => {
+            stream = await new Promise<MediaStream>((resolve, reject) => {
               getUserMedia(constraints, resolve, reject);
             });
           }
@@ -272,9 +272,9 @@ export default function PhotoPage() {
   };
 
   return (
-    <div className="bg-[#ffffff] rounded-xl overflow-hidden h-[100vh] flex flex-col">
+    <div className="bg-white/80 backdrop-blur-glass rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden min-h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] flex flex-col border border-white/20">
       <PageHeader
-        title="拍摄页"
+        title="商品拍摄"
         showBackButton
         onBack={() => {
           stopCamera();
@@ -283,7 +283,7 @@ export default function PhotoPage() {
       />
 
       {/* Camera View / Photo Preview */}
-      <div className="flex-1 relative bg-[#000000]">
+      <div className="flex-1 relative bg-slate-900 rounded-t-2xl overflow-hidden">
         <video
           ref={videoRef}
           autoPlay
@@ -306,17 +306,18 @@ export default function PhotoPage() {
         )}
 
         {!hasCamera && !photoTaken && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4">
-            <div className="text-center mb-4">
-              {cameraError || "正在加载摄像头..."}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
+            <div className="text-center mb-6">
+              <div className="text-lg font-medium mb-2">摄像头加载中</div>
+              <div className="text-sm text-slate-300">{cameraError || "正在初始化摄像头..."}</div>
             </div>
             {cameraError && (
               <button
                 type="button"
                 onClick={setupCamera}
-                className="px-4 py-2 bg-[#07c160] text-white rounded-lg text-sm hover:bg-green-600 transition-colors"
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 transition-all duration-200 shadow-lg font-medium"
               >
-                重试
+                重新尝试
               </button>
             )}
           </div>
@@ -325,12 +326,12 @@ export default function PhotoPage() {
 
       {/* Camera Controls */}
       {!photoTaken ? (
-        <div className="bg-[#000000] py-4 px-6 flex items-center justify-between">
-          <div className="w-8 h-8"></div>
+        <div className="bg-slate-900 py-6 px-6 flex items-center justify-between">
+          <div className="w-10 h-10"></div>
           <button
             type="button"
             onClick={capturePhoto}
-            className="w-14 h-14 rounded-full border-2 border-white flex items-center justify-center"
+            className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center hover:scale-105 transition-transform duration-200 disabled:opacity-50"
             disabled={!hasCamera}
             aria-label="拍照"
           >
@@ -341,7 +342,7 @@ export default function PhotoPage() {
             type="button"
             onClick={flipCamera}
             disabled={photoTaken}
-            className={`w-8 h-8 flex items-center justify-center ${
+            className={`w-10 h-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200 ${
               photoTaken ? "opacity-50" : ""
             }`}
             aria-label="切换摄像头"
@@ -350,28 +351,38 @@ export default function PhotoPage() {
           </button>
         </div>
       ) : (
-        <div></div>
+        <div className="h-6"></div>
       )}
 
       {/* Action Buttons */}
-      <div className="bg-white py-4 flex items-center justify-center gap-4">
+      <div className="bg-white/60 backdrop-blur-sm py-6 flex items-center justify-center gap-4 border-t border-slate-200/60">
         {photoTaken && (
           <>
             <button
               type="button"
               onClick={retakePhoto}
-              className="px-6 py-2 bg-[#f2f2f2] text-[#000000] rounded-full text-sm hover:bg-gray-300 transition-colors"
+              className="px-8 py-3 bg-slate-200 hover:bg-slate-300 transition-all duration-200 font-medium rounded-xl text-sm"
+              style={{
+                color: '#374151',
+                backgroundColor: '#e2e8f0', // fallback color
+              }}
             >
-              重新拍
+              <span style={{color: '#374151'}}>重新拍摄</span>
             </button>
 
             <button
               type="button"
               onClick={handleSubmit}
               disabled={isUploading || isRecognizing}
-              className="px-6 py-2 bg-[#07c160] text-white rounded-full text-sm hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25 font-medium rounded-xl text-sm"
+              style={{
+                color: '#ffffff',
+                backgroundColor: '#2563eb', // fallback color
+              }}
             >
-              {isUploading ? "上传中..." : isRecognizing ? "识别中..." : "提交"}
+              <span style={{color: '#ffffff'}}>
+                {isUploading ? "上传中..." : isRecognizing ? "识别中..." : "开始识别"}
+              </span>
             </button>
           </>
         )}

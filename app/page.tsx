@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { PageContainer } from "@/components/ui/page-container";
@@ -38,7 +38,7 @@ export default function HomePage() {
 
   return (
     <PageContainer>
-      <PageHeader title="首页" />
+      <PageHeader title="智能购物" />
       
       <LocationDisplay 
         location={APP_CONFIG.defaultLocation}
@@ -48,26 +48,39 @@ export default function HomePage() {
       <ProductRecognition />
 
       {/* Voice Assistant Button */}
-      <Link href="/chat?from=home" className="mx-4 mt-3">
-        <button 
-          type="button"
-          className="w-full bg-[#07c160] text-white py-3 rounded-md text-center hover:bg-green-600 transition-colors"
-        >
-          打开语音购物助手
-        </button>
-      </Link>
+      <div className="px-6 mt-4">
+        <Link href="/chat?from=home">
+          <button 
+            type="button"
+            className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 transition-all duration-200 shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] flex items-center justify-center font-medium py-4 rounded-2xl text-center text-force-white"
+            style={{
+              color: '#ffffff',
+              backgroundColor: '#10b981', // fallback color
+            }}
+          >
+            <MessageCircle className="w-5 h-5 mr-3 text-force-white" style={{color: '#ffffff'}} />
+            <span className="text-force-white" style={{color: '#ffffff'}}>打开语音购物助手</span>
+          </button>
+        </Link>
+      </div>
 
       {/* AI Recommendations */}
-      <div className="flex items-center justify-between px-4 mt-4">
+      <div className="flex items-center justify-between px-6 mt-6 mb-4">
         <div className="flex items-center">
-          <span className="font-bold mr-1">AI</span>
-          <span className="text-sm">帮你聪明买</span>
+          <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg mr-3">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <span className="font-semibold text-slate-900 mr-1">AI</span>
+            <span className="text-sm text-slate-600">帮你聪明买</span>
+          </div>
         </div>
         <button 
           type="button"
-          className="text-xs text-[#979797] flex items-center hover:text-gray-600 transition-colors"
+          className="text-sm text-slate-500 flex items-center hover:text-slate-700 transition-colors duration-200 px-3 py-1.5 rounded-full hover:bg-slate-100/60 group"
         >
-          日用食品 <ChevronDown className="w-3 h-3 ml-1" />
+          <span>日用食品</span>
+          <ChevronDown className="w-4 h-4 ml-1 group-hover:rotate-180 transition-transform duration-200" />
         </button>
       </div>
 

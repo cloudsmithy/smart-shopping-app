@@ -19,7 +19,6 @@ export default function MicrophoneButton({
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
   const [gesture, setGesture] = useState<"none" | "left" | "up">("none");
-  const [instructions, setInstructions] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
@@ -160,12 +159,12 @@ export default function MicrophoneButton({
 
     const updateVisualization = () => {
       if (analyserRef.current && dataArrayRef.current) {
-        analyserRef.current.getFloatTimeDomainData(dataArrayRef.current);
+        analyserRef.current.getFloatTimeDomainData(dataArrayRef.current as any);
         // Create a copy of the array to avoid reference issues
         const dataArray = Array.from(dataArrayRef.current);
         // Filter out NaN values and replace with 0
         const cleanData = dataArray.map(value => isNaN(value) ? 0 : value);
-        setAudioData(new Float32Array(cleanData));
+        setAudioData(cleanData as any);
       }
       animationFrameRef.current = requestAnimationFrame(updateVisualization);
     };
@@ -180,7 +179,6 @@ export default function MicrophoneButton({
     setStartPos({ x: clientX, y: clientY });
     setCurrentPos({ x: clientX, y: clientY });
     setGesture("none");
-    setInstructions("按住录音，松开发送");
 
     // Start recording when button is pressed
     startRecording();
@@ -196,7 +194,6 @@ export default function MicrophoneButton({
     // 不管任何手势，都直接停止录音并保存
     stopRecording(true);
     setIsPressed(false);
-    setInstructions(null);
   };
 
   // 简化按钮样式，只有按下缩放效果
@@ -205,37 +202,49 @@ export default function MicrophoneButton({
   const buttonStyle = {
     transform: buttonTransform,
     transition: isPressed ? "none" : "transform 0.2s ease",
-    backgroundColor: "#000000",
   };
 
   return (
     <div className="relative">
-      {instructions && (
-        <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white text-xs py-1 px-3 rounded-full whitespace-nowrap">
-          {instructions}
-        </div>
-      )}
-
       {error && (
-        <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-500 bg-opacity-70 text-white text-xs py-1 px-3 rounded-full whitespace-nowrap">
-          {error}
+        <div 
+          className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-red-500/90 backdrop-blur-sm rounded-xl whitespace-nowrap shadow-lg text-force-white"
+          style={{
+            backgroundColor: '#ef4444',
+            color: '#ffffff',
+            padding: '8px 16px',
+            fontSize: '12px'
+          }}
+        >
+          <span style={{color: '#ffffff'}}>{error}</span>
         </div>
       )}
 
       {isRecording && audioData && (
-        <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 rounded-full p-2 w-32 h-8 flex items-center justify-center">
-          <div className="flex items-center h-4 space-x-0.5">
+        <div 
+          className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 flex items-center justify-center"
+          style={{
+            backgroundColor: '#1e293b',
+            padding: '12px',
+            width: '144px',
+            height: '40px'
+          }}
+        >
+          <div className="flex items-center h-6 space-x-1">
             {Array.from(audioData)
               .filter((_, i) => i % 8 === 0)
               .slice(0, 16)
               .map((value, index) => {
-                const height = Math.max(4, Math.min(16, Math.abs(value || 0) * 20 + 4));
+                const height = Math.max(4, Math.min(20, Math.abs(value || 0) * 25 + 4));
                 return (
                   <div
                     key={index}
-                    className="w-1 bg-white"
+                    className="w-1 rounded-full transition-all duration-100"
                     style={{
                       height: `${height}px`,
+                      background: isRecording 
+                        ? 'linear-gradient(to top, #60a5fa, #818cf8)' 
+                        : '#94a3b8',
                       opacity: isRecording ? 1 : 0.5,
                     }}
                   />
@@ -247,10 +256,13 @@ export default function MicrophoneButton({
 
       <button
         type="button"
-        className={`w-14 h-14 bg-[#000000] rounded-full flex items-center justify-center shadow-lg transition-all ${
-          isProcessing ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-800"
-        }`}
-        style={buttonStyle}
+        className={`w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/30 transition-all duration-200 ${
+          isProcessing ? "opacity-50 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-800 hover:shadow-2xl hover:shadow-blue-500/40"
+        } ${isPressed ? "scale-110" : "scale-100"}`}
+        style={{
+          ...buttonStyle,
+          backgroundColor: '#2563eb', // fallback color
+        }}
         onTouchStart={isProcessing ? undefined : handleTouchStart}
         onTouchMove={isProcessing ? undefined : handleTouchMove}
         onTouchEnd={isProcessing ? undefined : handleTouchEnd}
@@ -262,9 +274,10 @@ export default function MicrophoneButton({
         aria-label="录音按钮"
       >
         <Mic
-          className={`w-7 h-7 text-white ${
+          className={`w-7 h-7 ${
             isRecording || isProcessing ? "animate-pulse" : ""
           }`}
+          style={{color: '#ffffff'}}
         />
       </button>
     </div>
