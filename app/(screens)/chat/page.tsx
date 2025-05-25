@@ -185,6 +185,45 @@ function ChatContent() {
     }
   };
 
+  const handleSuggestionClick = async (suggestionType: string) => {
+    const suggestions = {
+      '矿泉水选购指南': '用户正在考虑购买矿泉水。请提供一些关于如何选择矿泉水（例如，关注水源地、矿物质含量、品牌声誉等）的通用建议',
+      '饮水健康小贴士': '请针对矿泉水的饮用，提供一些通用且实用的健康饮水小贴士。例如，每天建议饮水量、不同场景下（运动后、睡前）的饮水建议、以及矿泉水与纯净水的区别。',
+      '常见品牌': '请列举一些市面上常见的矿泉水品牌，并描述这类规格矿泉水通常的价格区间（例如，低价、中价、高价位）。请强调这只是一个大致范围，实际价格可能因地区和促销活动而异。'
+    };
+
+    const query = suggestions[suggestionType as keyof typeof suggestions];
+    
+    if (!query) return;
+
+    try {
+      setIsProcessingAudio(true);
+      
+      const recognizeResponse = await recognizeUrl({
+        image_url: photoData?.imageUrl || "",
+        query: query
+      });
+      
+      if (recognizeResponse.result?.text_result) {
+        // Add system message
+        const systemMessage: SystemMessage = {
+          text: recognizeResponse.result.text_result,
+          audioUrl: recognizeResponse.result.audio_url
+        };
+        setSystemMessages(prev => [...prev, systemMessage]);
+        
+        // Play audio if available
+        if (recognizeResponse.result.audio_url) {
+          playAudio(recognizeResponse.result.audio_url);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing suggestion:', error);
+    } finally {
+      setIsProcessingAudio(false);
+    }
+  };
+
   const playAudio = (audioUrl: string) => {
     // Stop current audio if playing
     if (currentPlayingAudio) {
@@ -288,41 +327,75 @@ function ChatContent() {
 
         {/* Photo Recognition Result */}
         {photoData && (
-          <div className="flex justify-end mb-6 animate-scale-in">
-            <div className="max-w-[70%]">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-4 mb-2 shadow-lg shadow-blue-500/25 text-force-white"
-                style={{
-                  backgroundColor: '#2563eb', // fallback color
-                  color: '#ffffff'
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium text-force-white" style={{color: '#ffffff'}}>图片上传完成</div>
-                  <Check className="w-4 h-4" style={{color: '#ffffff'}} />
+          <>
+            <div className="flex justify-end mb-6 animate-scale-in">
+              <div className="max-w-[70%]">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-4 mb-2 shadow-lg shadow-blue-500/25 text-force-white"
+                  style={{
+                    backgroundColor: '#2563eb', // fallback color
+                    color: '#ffffff'
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-force-white" style={{color: '#ffffff'}}>图片上传完成</div>
+                    <Check className="w-4 h-4" style={{color: '#ffffff'}} />
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm text-force-white" style={{color: '#ffffff'}}>识别为 {photoData.recognitionResult}</div>
+                    <Check className="w-4 h-4" style={{color: '#ffffff'}} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/photo")}
+                    className="text-blue-100 text-sm hover:text-white transition-colors underline"
+                    style={{color: '#dbeafe'}}
+                  >
+                    识别有误 重新拍照
+                  </button>
                 </div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm text-force-white" style={{color: '#ffffff'}}>识别为 {photoData.recognitionResult}</div>
-                  <Check className="w-4 h-4" style={{color: '#ffffff'}} />
-                </div>
+              </div>
+              <div className="w-16 h-16 ml-3 rounded-xl overflow-hidden shadow-lg border-2 border-white">
+                <img
+                  src={photoData.photoUrl}
+                  alt="Product thumbnail"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Suggestion Buttons */}
+            <div className="flex justify-center mb-6 animate-fade-in" style={{animationDelay: '0.3s'}}>
+              <div className="flex gap-3 max-w-[95%]">
                 <button
                   type="button"
-                  onClick={() => router.push("/photo")}
-                  className="text-blue-100 text-sm hover:text-white transition-colors underline"
-                  style={{color: '#dbeafe'}}
+                  onClick={() => handleSuggestionClick('矿泉水选购指南')}
+                  disabled={isProcessingAudio}
+                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 >
-                  识别有误 重新拍照
+                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>💡 选购指南</div>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleSuggestionClick('饮水健康小贴士')}
+                  disabled={isProcessingAudio}
+                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                >
+                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏥 健康贴士</div>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleSuggestionClick('常见品牌')}
+                  disabled={isProcessingAudio}
+                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                >
+                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏷️ 常见品牌</div>
                 </button>
               </div>
             </div>
-            <div className="w-16 h-16 ml-3 rounded-xl overflow-hidden shadow-lg border-2 border-white">
-              <img
-                src={photoData.photoUrl}
-                alt="Product thumbnail"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
+          </>
         )}
 
         {/* User Voice Messages */}
@@ -373,7 +446,7 @@ function ChatContent() {
                 <div className="w-2 h-2 bg-white/70 rounded-full animate-bounce"></div>
                 <div className="w-2 h-2 bg-white/70 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                 <div className="w-2 h-2 bg-white/70 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                <span className="text-sm ml-2 text-force-white" style={{color: '#ffffff'}}>正在识别语音...</span>
+                <span className="text-sm ml-2 text-force-white" style={{color: '#ffffff'}}>正在处理...</span>
               </div>
             </div>
           </div>
