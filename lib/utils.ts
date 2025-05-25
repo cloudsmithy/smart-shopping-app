@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === "production" 
-    ? "https://test.airag.click/" 
+    ? "https://dev.airag.click/" 
     : "http://3.113.243.125:5006/",
   withCredentials: false,
   headers: {
