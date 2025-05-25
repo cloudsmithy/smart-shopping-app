@@ -36,16 +36,7 @@ export default function PhotoPage() {
         location.hostname !== "localhost" &&
         location.hostname !== "127.0.0.1"
       ) {
-        throw new Error("移动端需要HTTPS才能访问摄像头，请使用HTTPS访问");
-      }
-
-      // 改进的兼容性检查 - 专门针对移动端
-      if (
-        !navigator.mediaDevices &&
-        !(navigator as any).getUserMedia &&
-        !(navigator as any).webkitGetUserMedia
-      ) {
-        throw new Error("浏览器不支持摄像头功能");
+        throw new Error("需要HTTPS才能访问摄像头");
       }
 
       // 更完善的getUserMedia获取方式
