@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Mic } from "lucide-react";
 import type React from "react";
 
@@ -22,14 +23,10 @@ export default function MicrophoneButton({
   const [isRecording, setIsRecording] = useState(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
-  const [audioData, setAudioData] = useState<Float32Array | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Float32Array | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
 
   // Initialize audio context
   useEffect(() => {
@@ -40,9 +37,6 @@ export default function MicrophoneButton({
     return () => {
       if (audioStream) {
         audioStream.getTracks().forEach((track) => track.stop());
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
       }
       if (context.state !== "closed") {
         context.close();
@@ -66,23 +60,6 @@ export default function MicrophoneButton({
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setAudioStream(stream);
-
-      // Create analyzer for visualizing audio
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Float32Array(bufferLength);
-      // Initialize with zeros to prevent NaN values
-      dataArray.fill(0);
-
-      // Connect microphone to analyzer
-      const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-
-      // Store references
-      analyserRef.current = analyser;
-      dataArrayRef.current = dataArray;
 
       // Create media recorder
       const mediaRecorder = new MediaRecorder(stream);
@@ -117,9 +94,6 @@ export default function MicrophoneButton({
       // Start recording
       mediaRecorder.start();
       setIsRecording(true);
-
-      // Start visualization
-      visualizeAudio();
     } catch (err) {
       console.error("Error starting recording:", err);
       setError("无法访问麦克风，请确保已授予麦克风权限。");
@@ -140,36 +114,12 @@ export default function MicrophoneButton({
       setAudioStream(null);
     }
 
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
     setIsRecording(false);
 
     if (!shouldSave) {
       // Clear recorded chunks if not saving
       audioChunksRef.current = [];
     }
-  };
-
-  // Visualize audio function
-  const visualizeAudio = () => {
-    if (!analyserRef.current || !dataArrayRef.current) return;
-
-    const updateVisualization = () => {
-      if (analyserRef.current && dataArrayRef.current) {
-        analyserRef.current.getFloatTimeDomainData(dataArrayRef.current as any);
-        // Create a copy of the array to avoid reference issues
-        const dataArray = Array.from(dataArrayRef.current);
-        // Filter out NaN values and replace with 0
-        const cleanData = dataArray.map(value => isNaN(value) ? 0 : value);
-        setAudioData(cleanData as any);
-      }
-      animationFrameRef.current = requestAnimationFrame(updateVisualization);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(updateVisualization);
   };
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
@@ -205,81 +155,86 @@ export default function MicrophoneButton({
   };
 
   return (
-    <div className="relative">
-      {error && (
+    <>
+      {/* 全屏遮罩和录音提示 - 使用Portal渲染到body */}
+      {isRecording && typeof window !== 'undefined' && createPortal(
         <div 
-          className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-red-500/90 backdrop-blur-sm rounded-xl whitespace-nowrap shadow-lg text-force-white"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center"
           style={{
-            backgroundColor: '#ef4444',
-            color: '#ffffff',
-            padding: '8px 16px',
-            fontSize: '12px'
+            pointerEvents: 'none',
           }}
         >
-          <span style={{color: '#ffffff'}}>{error}</span>
-        </div>
-      )}
-
-      {isRecording && audioData && (
-        <div 
-          className="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/10 flex items-center justify-center"
-          style={{
-            backgroundColor: '#1e293b',
-            padding: '12px',
-            width: '144px',
-            height: '40px'
-          }}
-        >
-          <div className="flex items-center h-6 space-x-1">
-            {Array.from(audioData)
-              .filter((_, i) => i % 8 === 0)
-              .slice(0, 16)
-              .map((value, index) => {
-                const height = Math.max(4, Math.min(20, Math.abs(value || 0) * 25 + 4));
-                return (
-                  <div
-                    key={index}
-                    className="w-1 rounded-full transition-all duration-100"
-                    style={{
-                      height: `${height}px`,
-                      background: isRecording 
-                        ? 'linear-gradient(to top, #60a5fa, #818cf8)' 
-                        : '#94a3b8',
-                      opacity: isRecording ? 1 : 0.5,
-                    }}
-                  />
-                );
-              })}
+          <div className="flex flex-col items-center space-y-8">
+            {/* 录音动画圆圈 */}
+            <div className="relative">
+              <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
+                <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-2xl">
+                    <Mic className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+              </div>
+              {/* 录音脉冲效果 */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-32 h-32 bg-blue-500/20 rounded-full animate-ping" />
+              </div>
+            </div>
+            
+            {/* 提示文字 */}
+            <div className="text-center space-y-2">
+              <p className="text-white text-xl font-medium">按住说话，松开结束</p>
+              <p className="text-white/70 text-sm">正在录音中...</p>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      <button
-        type="button"
-        className={`w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/30 transition-all duration-200 ${
-          isProcessing ? "opacity-50 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-800 hover:shadow-2xl hover:shadow-blue-500/40"
-        } ${isPressed ? "scale-110" : "scale-100"}`}
-        style={{
-          ...buttonStyle,
-          backgroundColor: '#2563eb', // fallback color
-        }}
-        onTouchStart={isProcessing ? undefined : handleTouchStart}
-        onTouchMove={isProcessing ? undefined : handleTouchMove}
-        onTouchEnd={isProcessing ? undefined : handleTouchEnd}
-        onMouseDown={isProcessing ? undefined : handleTouchStart}
-        onMouseMove={isProcessing ? undefined : handleTouchMove}
-        onMouseUp={isProcessing ? undefined : handleTouchEnd}
-        onMouseLeave={isProcessing ? undefined : handleTouchEnd}
-        disabled={isProcessing}
-        aria-label="录音按钮"
-      >
-        <Mic
-          className={`w-7 h-7 ${
-            isRecording || isProcessing ? "animate-pulse" : ""
-          }`}
-          style={{color: '#ffffff'}}
-        />
-      </button>
-    </div>
+      <div className="relative">
+        {error && (
+          <div 
+            className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-red-500/90 backdrop-blur-sm rounded-xl whitespace-nowrap shadow-lg text-force-white"
+            style={{
+              backgroundColor: '#ef4444',
+              color: '#ffffff',
+              padding: '8px 16px',
+              fontSize: '12px',
+              zIndex: 60,
+            }}
+          >
+            <span style={{color: '#ffffff'}}>{error}</span>
+          </div>
+        )}
+
+        <button
+          type="button"
+          className={`w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/30 transition-all duration-200 relative ${
+            isRecording ? 'z-[9998]' : 'z-50'
+          } ${
+            isProcessing ? "opacity-50 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-800 hover:shadow-2xl hover:shadow-blue-500/40"
+          } ${isPressed ? "scale-110" : "scale-100"}`}
+          style={{
+            ...buttonStyle,
+            backgroundColor: '#2563eb', // fallback color
+          }}
+          onTouchStart={isProcessing ? undefined : handleTouchStart}
+          onTouchMove={isProcessing ? undefined : handleTouchMove}
+          onTouchEnd={isProcessing ? undefined : handleTouchEnd}
+          onMouseDown={isProcessing ? undefined : handleTouchStart}
+          onMouseMove={isProcessing ? undefined : handleTouchMove}
+          onMouseUp={isProcessing ? undefined : handleTouchEnd}
+          onMouseLeave={isProcessing ? undefined : handleTouchEnd}
+          disabled={isProcessing}
+          aria-label="录音按钮"
+        >
+          <Mic
+            className={`w-7 h-7 ${
+              isRecording || isProcessing ? "animate-pulse" : ""
+            }`}
+            style={{color: '#ffffff'}}
+          />
+        </button>
+      </div>
+    </>
   );
 }
