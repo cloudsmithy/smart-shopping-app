@@ -22,7 +22,7 @@ export const recognizeImage = (imageUrl: string) => {
 // 多模态识别（图像+语音+文本查询）
 export interface RecognizeUrlParams {
   audio_url?: string;
-  image_url: string;
+  fileinfo: string;
   query?: string;
 }
 

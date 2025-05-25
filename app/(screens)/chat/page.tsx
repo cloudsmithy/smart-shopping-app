@@ -160,7 +160,7 @@ function ChatContent() {
         // Step 3: Call recognizeUrl with audio_url and default query
         const recognizeResponse = await recognizeUrl({
           audio_url: audioUrl,
-          image_url: photoData?.imageUrl || "",
+          fileinfo: photoData?.imageUrl || "",
           query: "请识别这个商品，并提供品牌、类别、净含量和保质期等信息"
         });
         
@@ -187,9 +187,9 @@ function ChatContent() {
 
   const handleSuggestionClick = async (suggestionType: string) => {
     const suggestions = {
-      '矿泉水选购指南': '用户正在考虑购买矿泉水。请提供一些关于如何选择矿泉水（例如，关注水源地、矿物质含量、品牌声誉等）的通用建议',
-      '饮水健康小贴士': '请针对矿泉水的饮用，提供一些通用且实用的健康饮水小贴士。例如，每天建议饮水量、不同场景下（运动后、睡前）的饮水建议、以及矿泉水与纯净水的区别。',
-      '常见品牌': '请列举一些市面上常见的矿泉水品牌，并描述这类规格矿泉水通常的价格区间（例如，低价、中价、高价位）。请强调这只是一个大致范围，实际价格可能因地区和促销活动而异。'
+      '成分分析': '请分析这个商品的主要成分和配料表，重点关注是否含有添加剂、防腐剂、人工色素等化学成分，以及可能的过敏原信息，并评估其对健康的影响。',
+      '营养价值': '请分析这个商品的营养成分，包括热量、蛋白质、脂肪、碳水化合物、维生素、矿物质等含量，并提供营养价值评估和健康建议。',
+      '选购建议': '请提供这类商品的选购建议，包括如何识别优质产品、需要注意的品质指标、价格区间参考，以及推荐的品牌或替代产品。'
     };
 
     const query = suggestions[suggestionType as keyof typeof suggestions];
@@ -200,7 +200,7 @@ function ChatContent() {
       setIsProcessingAudio(true);
       
       const recognizeResponse = await recognizeUrl({
-        image_url: photoData?.imageUrl || "",
+        fileinfo: photoData?.imageUrl || "",
         query: query
       });
       
@@ -369,29 +369,29 @@ function ChatContent() {
               <div className="flex gap-3 max-w-[95%]">
                 <button
                   type="button"
-                  onClick={() => handleSuggestionClick('矿泉水选购指南')}
+                  onClick={() => handleSuggestionClick('成分分析')}
                   disabled={isProcessingAudio}
                   className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 >
-                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>💡 选购指南</div>
+                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>💡 成分分析</div>
                 </button>
                 
                 <button
                   type="button"
-                  onClick={() => handleSuggestionClick('饮水健康小贴士')}
+                  onClick={() => handleSuggestionClick('营养价值')}
                   disabled={isProcessingAudio}
                   className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 >
-                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏥 健康贴士</div>
+                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏥 营养价值</div>
                 </button>
                 
                 <button
                   type="button"
-                  onClick={() => handleSuggestionClick('常见品牌')}
+                  onClick={() => handleSuggestionClick('选购建议')}
                   disabled={isProcessingAudio}
                   className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 >
-                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏷️ 常见品牌</div>
+                  <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏷️ 选购建议</div>
                 </button>
               </div>
             </div>
