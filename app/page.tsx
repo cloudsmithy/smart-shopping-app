@@ -70,7 +70,13 @@ export default function HomePage() {
       {/* AI Recommendations */}
       <div className="flex items-center justify-between px-6 mt-6 mb-4">
         <div className="flex items-center">
-          <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg mr-3 icon-force-white">
+          <div 
+            className="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg shadow-lg shadow-purple-500/25 mr-3 icon-force-white"
+            style={{
+              background: 'linear-gradient(to bottom right, #a855f7, #4f46e5)',
+              boxShadow: '0 10px 15px -3px rgba(168, 85, 247, 0.25), 0 4px 6px -2px rgba(168, 85, 247, 0.05)'
+            }}
+          >
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
