@@ -12,9 +12,11 @@ import { ProductRecognition } from "@/components/home/product-recognition";
 import { ProductList } from "@/components/home/product-list";
 import { APP_CONFIG, SAMPLE_PRODUCTS, ROUTES } from "@/lib/constants";
 import type { ProductItem } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const { loading, error } = useAuth();
+  const router = useRouter();
 
   if (loading) {
     return <LoadingSpinner message="正在初始化..." />;
@@ -30,6 +32,7 @@ export default function HomePage() {
 
   const handleProductClick = (product: ProductItem) => {
     console.log("Product clicked:", product);
+    router.push(`/chat?from=productList&product=${encodeURIComponent(product.name)}`);
   };
 
   const handleLoadMore = () => {
@@ -67,7 +70,7 @@ export default function HomePage() {
       {/* AI Recommendations */}
       <div className="flex items-center justify-between px-6 mt-6 mb-4">
         <div className="flex items-center">
-          <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg mr-3">
+          <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg mr-3 icon-force-white">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>

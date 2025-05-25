@@ -8,7 +8,7 @@ interface LocationDisplayProps {
 export function LocationDisplay({ location, onLocationChange }: LocationDisplayProps) {
   return (
     <div className="flex items-center px-6 py-4 animate-fade-in">
-      <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 mr-3">
+      <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 mr-3 icon-force-white">
         <MapPin className="w-4 h-4 text-white" />
       </div>
       
