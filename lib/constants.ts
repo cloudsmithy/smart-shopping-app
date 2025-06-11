@@ -5,6 +5,19 @@ export const APP_CONFIG = {
   defaultLocation: "上海市黄浦区马当路富民超市",
 } as const;
 
+// 下拉菜单数据
+export const SUPERMARKET_OPTIONS = [
+  { value: "shanghaip-madang", label: "上海市黄浦区马当路富民超市" },
+  { value: "shanghai-xizang", label: "上海市黄浦区西藏中路盒马超市" },
+  { value: "shanghai-songhu", label: "上海市杨浦区淞沪路小象超市" },
+] as const;
+
+export const PRODUCT_CATEGORY_OPTIONS = [
+  { value: "daily-food", label: "日用食品" },
+  { value: "snacks-drinks", label: "零食饮料" },
+  { value: "seasonal-ingredients", label: "时令食材" },
+] as const;
+
 // 样式常量
 export const COLORS = {
   primary: "#07c160",

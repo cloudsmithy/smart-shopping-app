@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ChevronDown, MessageCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,13 +11,21 @@ import { ErrorDisplay } from "@/components/ui/error-display";
 import { LocationDisplay } from "@/components/home/location-display";
 import { ProductRecognition } from "@/components/home/product-recognition";
 import { ProductList } from "@/components/home/product-list";
-import { APP_CONFIG, SAMPLE_PRODUCTS, ROUTES } from "@/lib/constants";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { APP_CONFIG, SAMPLE_PRODUCTS, ROUTES, PRODUCT_CATEGORY_OPTIONS } from "@/lib/constants";
 import type { ProductItem } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const { loading, error } = useAuth();
   const router = useRouter();
+  const [currentLocation, setCurrentLocation] = useState<string>(APP_CONFIG.defaultLocation);
+  const [selectedCategory, setSelectedCategory] = useState<string>("日用食品");
 
   if (loading) {
     return <LoadingSpinner message="正在初始化..." />;
@@ -26,8 +35,14 @@ export default function HomePage() {
     return <ErrorDisplay message={`初始化失败: ${error}`} />;
   }
 
-  const handleLocationChange = () => {
-    console.log("Location change clicked");
+  const handleLocationChange = (newLocation: string) => {
+    console.log("Location changed to:", newLocation);
+    setCurrentLocation(newLocation);
+  };
+
+  const handleCategoryChange = (newCategory: string) => {
+    console.log("Category changed to:", newCategory);
+    setSelectedCategory(newCategory);
   };
 
   const handleProductClick = (product: ProductItem) => {
@@ -44,7 +59,7 @@ export default function HomePage() {
       <PageHeader title="智能购物" />
       
       <LocationDisplay 
-        location={APP_CONFIG.defaultLocation}
+        location={currentLocation}
         onLocationChange={handleLocationChange}
       />
 
@@ -84,13 +99,29 @@ export default function HomePage() {
             <span className="text-sm text-slate-600">帮你聪明买</span>
           </div>
         </div>
-        <button 
-          type="button"
-          className="text-sm text-slate-500 flex items-center hover:text-slate-700 transition-colors duration-200 px-3 py-1.5 rounded-full hover:bg-slate-100/60 group"
-        >
-          <span>日用食品</span>
-          <ChevronDown className="w-4 h-4 ml-1 group-hover:rotate-180 transition-transform duration-200" />
-        </button>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button 
+              type="button"
+              className="text-sm text-slate-500 flex items-center hover:text-slate-700 transition-colors duration-200 px-3 py-1.5 rounded-full hover:bg-slate-100/60 group"
+            >
+              <span>{selectedCategory}</span>
+              <ChevronDown className="w-4 h-4 ml-1 group-hover:rotate-180 transition-transform duration-200" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => handleCategoryChange(option.label)}
+                className="cursor-pointer"
+              >
+                <span className="text-sm">{option.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <ProductList 
