@@ -371,7 +371,7 @@ function ChatContent() {
                   type="button"
                   onClick={() => handleSuggestionClick('成分分析')}
                   disabled={isProcessingAudio}
-                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center"
                 >
                   <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>💡 成分分析</div>
                 </button>
@@ -380,7 +380,7 @@ function ChatContent() {
                   type="button"
                   onClick={() => handleSuggestionClick('营养价值')}
                   disabled={isProcessingAudio}
-                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center"
                 >
                   <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏥 营养价值</div>
                 </button>
@@ -389,7 +389,7 @@ function ChatContent() {
                   type="button"
                   onClick={() => handleSuggestionClick('选购建议')}
                   disabled={isProcessingAudio}
-                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 text-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  className="flex-1 min-w-0 bg-white/95 backdrop-blur-sm rounded-xl py-4 px-3 shadow-lg shadow-blue-500/10 border-2 border-white/40 hover:bg-white hover:border-blue-200 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center"
                 >
                   <div className="text-sm font-semibold text-slate-800 whitespace-nowrap" style={{color: '#1e293b'}}>🏷️ 选购建议</div>
                 </button>
@@ -425,7 +425,7 @@ function ChatContent() {
                   className="mt-3 inline-flex items-center text-xs text-blue-600 hover:text-blue-700 transition-colors font-medium"
                   style={{color: '#2563eb'}}
                 >
-                  🔊 播放语音回复
+                  🔊 点这里听
                 </button>
               )}
             </div>
