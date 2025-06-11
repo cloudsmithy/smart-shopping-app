@@ -16,10 +16,7 @@ export default function MicrophoneButton({
   onAudioRecorded,
   isProcessing = false,
 }: MicrophoneButtonProps) {
-  const [isPressed, setIsPressed] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
-  const [gesture, setGesture] = useState<"none" | "left" | "up">("none");
+
   const [isRecording, setIsRecording] = useState(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
@@ -122,36 +119,20 @@ export default function MicrophoneButton({
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    setIsPressed(true);
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    setStartPos({ x: clientX, y: clientY });
-    setCurrentPos({ x: clientX, y: clientY });
-    setGesture("none");
-
-    // Start recording when button is pressed
-    startRecording();
+  const handleClick = () => {
+    if (isRecording) {
+      // 如果正在录音，点击按钮停止录音
+      stopRecording(true);
+    } else {
+      // 如果没有录音，点击按钮开始录音
+      startRecording();
+    }
   };
 
-  const handleTouchMove = () => {
-    if (!isPressed) return;
-  };
-
-  const handleTouchEnd = () => {
-    if (!isPressed) return;
-
-    // 不管任何手势，都直接停止录音并保存
-    stopRecording(true);
-    setIsPressed(false);
-  };
-
-  // 简化按钮样式，只有按下缩放效果
-  const buttonTransform = isPressed ? "scale(1.1)" : "scale(1)";
-
+  // 按钮样式
   const buttonStyle = {
-    transform: buttonTransform,
-    transition: isPressed ? "none" : "transform 0.2s ease",
+    transform: "scale(1)",
+    transition: "transform 0.2s ease",
   };
 
   return (
@@ -161,7 +142,7 @@ export default function MicrophoneButton({
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center"
           style={{
-            pointerEvents: 'none',
+            pointerEvents: 'auto',
           }}
         >
           <div className="flex flex-col items-center space-y-8">
@@ -181,10 +162,37 @@ export default function MicrophoneButton({
             </div>
             
             {/* 提示文字 */}
-            <div className="text-center space-y-2">
-              <p className="text-white text-xl font-medium">按住说话，松开结束</p>
-              <p className="text-white/70 text-sm">正在录音中...</p>
-            </div>
+            <div className="text-center space-y-4">
+              <div className="space-y-2">
+                <p className="text-white text-xl font-medium">语音对话中...</p>
+              </div>
+              
+              {/* 取消录音按钮 */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    stopRecording(false); // 不保存录音
+                  }}
+                  className="w-12 h-12 bg-red-500/20 hover:bg-red-500/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-200 border border-red-500/30"
+                  style={{ pointerEvents: 'auto' }}
+                  aria-label="取消录音"
+                >
+                <svg 
+                  className="w-6 h-6 text-white" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M6 18L18 6M6 6l12 12" 
+                  />
+                                 </svg>
+               </button>
+             </div>
+           </div>
           </div>
         </div>,
         document.body
@@ -212,18 +220,12 @@ export default function MicrophoneButton({
             isRecording ? 'z-[9998]' : 'z-50'
           } ${
             isProcessing ? "opacity-50 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-800 hover:shadow-2xl hover:shadow-blue-500/40"
-          } ${isPressed ? "scale-110" : "scale-100"}`}
+          }`}
           style={{
             ...buttonStyle,
             backgroundColor: '#2563eb', // fallback color
           }}
-          onTouchStart={isProcessing ? undefined : handleTouchStart}
-          onTouchMove={isProcessing ? undefined : handleTouchMove}
-          onTouchEnd={isProcessing ? undefined : handleTouchEnd}
-          onMouseDown={isProcessing ? undefined : handleTouchStart}
-          onMouseMove={isProcessing ? undefined : handleTouchMove}
-          onMouseUp={isProcessing ? undefined : handleTouchEnd}
-          onMouseLeave={isProcessing ? undefined : handleTouchEnd}
+          onClick={isProcessing ? undefined : handleClick}
           disabled={isProcessing}
           aria-label="录音按钮"
         >
