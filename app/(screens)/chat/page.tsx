@@ -19,6 +19,14 @@ interface SystemMessage {
   audioUrl?: string;
 }
 
+interface ConversationMessage {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
+  audioUrl?: string;
+  timestamp: number;
+}
+
 // 商品名称到问题的映射
 const productQuestions = {
   "安全的食用油": "如何选购安全的食用油？",
@@ -32,6 +40,7 @@ function ChatContent() {
   const [photoData, setPhotoData] = useState<PhotoData | null>(null);
   const [userMessages, setUserMessages] = useState<string[]>([]);
   const [systemMessages, setSystemMessages] = useState<SystemMessage[]>([]);
+  const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [currentPlayingAudio, setCurrentPlayingAudio] = useState<HTMLAudioElement | null>(null);
   const [mockDataLoaded, setMockDataLoaded] = useState(false);
@@ -46,6 +55,39 @@ function ChatContent() {
       // Clear the data after reading
       sessionStorage.removeItem('photoData');
     }
+    
+    // 同步已有消息到统一对话流
+    const syncExistingMessages = () => {
+      const messages: ConversationMessage[] = [];
+      const maxLength = Math.max(userMessages.length, systemMessages.length);
+      
+      for (let i = 0; i < maxLength; i++) {
+        if (i < userMessages.length && userMessages[i]?.trim()) {
+          messages.push({
+            id: `user-sync-${i}`,
+            type: 'user',
+            content: userMessages[i],
+            timestamp: Date.now() - (maxLength - i) * 1000
+          });
+        }
+        
+        if (i < systemMessages.length && systemMessages[i]?.text?.trim()) {
+          messages.push({
+            id: `assistant-sync-${i}`,
+            type: 'assistant',
+            content: systemMessages[i].text,
+            audioUrl: systemMessages[i].audioUrl,
+            timestamp: Date.now() - (maxLength - i) * 1000 + 500
+          });
+        }
+      }
+      
+      if (messages.length > 0) {
+        setConversationMessages(messages);
+      }
+    };
+    
+    syncExistingMessages();
 
     // 检查是否从商品列表进入，加载对应的mock对话
     const productName = searchParams.get('product');
@@ -72,6 +114,7 @@ function ChatContent() {
         // 清空现有消息
         setUserMessages([]);
         setSystemMessages([]);
+        setConversationMessages([]);
         
         // 清理之前的timeout
         timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
@@ -80,6 +123,15 @@ function ChatContent() {
         // 延迟显示用户消息
         const userTimeout = setTimeout(() => {
           setUserMessages([question]);
+          
+          // 添加到统一对话流
+          const userMessage: ConversationMessage = {
+            id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'user',
+            content: question,
+            timestamp: Date.now()
+          };
+          setConversationMessages([userMessage]);
         }, 500);
         timeoutsRef.current.push(userTimeout);
         
@@ -116,6 +168,15 @@ function ChatContent() {
                 currentMessageIndex = prev.length;
                 return [...prev, newMessage];
               });
+              
+              // 为统一对话流创建对应的消息
+              const assistantMessage: ConversationMessage = {
+                id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: 'assistant',
+                content: '',
+                timestamp: Date.now()
+              };
+              setConversationMessages(prev => [...prev, assistantMessage]);
             }, 1000);
             timeoutsRef.current.push(systemTimeout);
             
@@ -148,6 +209,19 @@ function ChatContent() {
                         return updated;
                       }
                       return prev;
+                    });
+                    
+                    // 同时更新统一对话流
+                    setConversationMessages(prev => {
+                      const updated = [...prev];
+                      const lastMessage = updated[updated.length - 1];
+                      if (lastMessage && lastMessage.type === 'assistant') {
+                        updated[updated.length - 1] = {
+                          ...lastMessage,
+                          content: accumulatedText
+                        };
+                      }
+                      return updated;
                     });
                   }
                   
@@ -203,6 +277,15 @@ function ChatContent() {
         // Display user message
         setUserMessages(prev => [...prev, asrResponse.result]);
         
+        // 添加到统一对话流
+        const userMessage: ConversationMessage = {
+          id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'user',
+          content: asrResponse.result,
+          timestamp: Date.now()
+        };
+        setConversationMessages(prev => [...prev, userMessage]);
+        
         // Step 3: Call recognizeUrl with audio_url and default query
         const recognizeResponse = await recognizeUrl({
           audio_url: audioUrl,
@@ -218,6 +301,16 @@ function ChatContent() {
           };
           setSystemMessages(prev => [...prev, systemMessage]);
           
+          // 添加到统一对话流
+          const assistantMessage: ConversationMessage = {
+            id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'assistant',
+            content: recognizeResponse.result.text_result,
+            audioUrl: recognizeResponse.result.audio_url,
+            timestamp: Date.now()
+          };
+          setConversationMessages(prev => [...prev, assistantMessage]);
+          
           // Play audio if available
           if (recognizeResponse.result.audio_url) {
             playAudio(recognizeResponse.result.audio_url);
@@ -228,6 +321,42 @@ function ChatContent() {
       console.error('Error processing audio:', error);
     } finally {
       setIsProcessingAudio(false);
+    }
+  };
+
+  const handleUserTranscription = (text: string) => {
+    // 添加用户语音转录到用户消息和统一对话流
+    setUserMessages(prev => [...prev, text]);
+    
+    const userMessage: ConversationMessage = {
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'user',
+      content: text,
+      timestamp: Date.now()
+    };
+    setConversationMessages(prev => [...prev, userMessage]);
+  };
+
+  const handleAssistantResponse = (text: string, audioUrl?: string) => {
+    // 添加AI响应到系统消息和统一对话流
+    const systemMessage: SystemMessage = {
+      text: text,
+      audioUrl: audioUrl
+    };
+    setSystemMessages(prev => [...prev, systemMessage]);
+    
+    const assistantMessage: ConversationMessage = {
+      id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'assistant',
+      content: text,
+      audioUrl: audioUrl,
+      timestamp: Date.now()
+    };
+    setConversationMessages(prev => [...prev, assistantMessage]);
+    
+    // 如果有音频URL，播放音频
+    if (audioUrl) {
+      playAudio(audioUrl);
     }
   };
 
@@ -257,6 +386,16 @@ function ChatContent() {
           audioUrl: recognizeResponse.result.audio_url
         };
         setSystemMessages(prev => [...prev, systemMessage]);
+        
+        // 添加到统一对话流
+        const assistantMessage: ConversationMessage = {
+          id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'assistant',
+          content: recognizeResponse.result.text_result,
+          audioUrl: recognizeResponse.result.audio_url,
+          timestamp: Date.now()
+        };
+        setConversationMessages(prev => [...prev, assistantMessage]);
         
         // Play audio if available
         if (recognizeResponse.result.audio_url) {
@@ -444,37 +583,43 @@ function ChatContent() {
           </>
         )}
 
-        {/* User Voice Messages */}
-        {userMessages.map((message, index) => (
-          <div key={index} className="flex justify-end mb-6 animate-scale-in">
-            <div 
-              className="max-w-[85%] bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl py-4 px-5 shadow-lg shadow-blue-500/25 text-force-white"
-              style={{
-                backgroundColor: '#2563eb', // fallback color
-                color: '#ffffff'
-              }}
-            >
-              <p className="text-sm leading-relaxed text-force-white" style={{color: '#ffffff'}}>{message}</p>
-            </div>
-          </div>
-        ))}
-
-        {/* System Response Messages */}
-        {systemMessages.map((message, index) => (
-          <div key={`system-${index}`} className="flex justify-start mb-6 animate-fade-in">
-            <div className="max-w-[85%] bg-white/90 backdrop-blur-sm rounded-2xl py-4 px-5 shadow-lg shadow-blue-500/10 border border-white/20">
-              <div className="text-sm text-slate-800 leading-relaxed whitespace-pre-line" style={{color: '#1e293b'}}>{message.text}</div>
-              {message.audioUrl && (
-                <button
-                  type="button"
-                  onClick={() => playAudio(message.audioUrl!)}
-                  className="mt-3 inline-flex items-center text-xs text-blue-600 hover:text-blue-700 transition-colors font-medium"
-                  style={{color: '#2563eb'}}
-                >
-                  🔊 点这里听
-                </button>
-              )}
-            </div>
+        {/* Conversation Messages - 统一的对话流 */}
+        {conversationMessages.map((message) => (
+          <div 
+            key={message.id} 
+            className={`flex mb-6 ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+          >
+            {message.type === 'user' ? (
+              // 用户消息气泡（右侧，蓝色）
+              <div 
+                className="max-w-[85%] bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl py-4 px-5 shadow-lg shadow-blue-500/25 text-force-white"
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff'
+                }}
+              >
+                <p className="text-sm leading-relaxed text-force-white" style={{color: '#ffffff'}}>
+                  {message.content}
+                </p>
+              </div>
+            ) : (
+              // AI助手消息气泡（左侧，白色）
+              <div className="max-w-[85%] bg-white/90 backdrop-blur-sm rounded-2xl py-4 px-5 shadow-lg shadow-blue-500/10 border border-white/20">
+                <div className="text-sm text-slate-800 leading-relaxed whitespace-pre-line" style={{color: '#1e293b'}}>
+                  {message.content}
+                </div>
+                {message.audioUrl && (
+                  <button
+                    type="button"
+                    onClick={() => playAudio(message.audioUrl!)}
+                    className="mt-3 inline-flex items-center text-xs text-blue-600 hover:text-blue-700 transition-colors font-medium"
+                    style={{color: '#2563eb'}}
+                  >
+                    🔊 点这里听
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
 
@@ -516,6 +661,19 @@ function ChatContent() {
           onNavigate={handleNavigate} 
           onAudioRecorded={handleAudioRecognition}
           isProcessing={isProcessingAudio}
+          onUserTranscription={handleUserTranscription}
+          onAssistantResponse={handleAssistantResponse}
+          initialContext={
+            (photoData || conversationMessages.length > 0) ? {
+              photoData: photoData || undefined,
+              userMessages: conversationMessages
+                .filter(msg => msg.type === 'user' && msg.content?.trim())
+                .map(msg => msg.content),
+              systemMessages: conversationMessages
+                .filter(msg => msg.type === 'assistant' && msg.content?.trim())
+                .map(msg => ({ text: msg.content, audioUrl: msg.audioUrl }))
+            } : undefined
+          }
         />
       </div>
     </PageContainer>

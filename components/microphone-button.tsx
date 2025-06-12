@@ -10,12 +10,29 @@ interface MicrophoneButtonProps {
   onNavigate: (screen: string) => void;
   onAudioRecorded?: (audioFile: File) => void;
   isProcessing?: boolean;
+  onUserTranscription?: (text: string) => void;
+  onAssistantResponse?: (text: string, audioUrl?: string) => void;
+  initialContext?: {
+    photoData?: {
+      imageUrl: string;
+      photoUrl: string;
+      recognitionResult: string;
+    };
+    userMessages?: string[];
+    systemMessages?: Array<{
+      text: string;
+      audioUrl?: string;
+    }>;
+  };
 }
 
 export default function MicrophoneButton({
   onNavigate,
   onAudioRecorded,
   isProcessing = false,
+  onUserTranscription,
+  onAssistantResponse,
+  initialContext,
 }: MicrophoneButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -27,6 +44,9 @@ export default function MicrophoneButton({
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+
+  // 用于累积响应文本
+  const currentResponseTextRef = useRef<string>("");
 
   const log = (msg: string) => {
     console.log(msg);
@@ -53,6 +73,9 @@ export default function MicrophoneButton({
     if (audioRef.current) {
       audioRef.current.srcObject = null;
     }
+    
+    // 重置累积文本
+    currentResponseTextRef.current = "";
     
     setIsRecording(false);
     setIsConnecting(false);
@@ -82,8 +105,11 @@ export default function MicrophoneButton({
       // 收到模型返回的音频 track
       pc.ontrack = (ev) => {
         log("🎵 收到音频流");
-        if (audioRef.current) {
+        if (audioRef.current && ev.streams[0]) {
           audioRef.current.srcObject = ev.streams[0];
+          audioRef.current.play().catch(error => {
+            log(`❌ 音频播放失败: ${error}`);
+          });
         }
       };
 
@@ -105,24 +131,96 @@ export default function MicrophoneButton({
         setIsConnecting(false);
         setIsRecording(true);
         
+        // 构建系统指令，包含图片识别信息（如果有的话）
+        let instructions = "你是一位耐心、专业的中文购物助理。请用简洁、友好的语气回答用户关于商品的问题。";
+        
+        if (initialContext?.photoData) {
+          instructions += `\n\n当前用户已上传商品图片，识别结果：${initialContext.photoData.recognitionResult}。图片URL: ${initialContext.photoData.imageUrl}。请结合这个商品信息来回答用户的问题。`;
+        }
+        
         // 发送会话配置
         const sessionUpdate = {
           type: "session.update",
           session: { 
-            instructions: "你是一位耐心、专业的中文购物助理。请用简洁、友好的语气回答用户关于商品的问题。",
+            instructions: instructions,
             voice: "alloy",
             input_audio_format: "pcm16",
             output_audio_format: "pcm16",
+            input_audio_transcription: {
+              model: "whisper-1"
+            },
             turn_detection: {
               type: "server_vad",
               threshold: 0.5,
               prefix_padding_ms: 300,
-              silence_duration_ms: 200
+              silence_duration_ms: 500
             }
           }
         };
         dc.send(JSON.stringify(sessionUpdate));
         log("➡️ 会话配置已发送");
+        
+        // 如果有初始上下文，发送对话历史
+        if (initialContext && (
+          (initialContext.userMessages && initialContext.userMessages.length > 0) || 
+          (initialContext.systemMessages && initialContext.systemMessages.length > 0)
+        )) {
+          log("📚 开始发送对话历史");
+          
+          try {
+            // 合并用户消息和系统消息，按时间顺序排列
+            const allMessages: Array<{type: 'user' | 'assistant', content: string}> = [];
+            
+            // 假设消息是按顺序交替出现的，先添加用户消息，再添加对应的系统消息
+            const userMsgs = initialContext.userMessages || [];
+            const systemMsgs = initialContext.systemMessages || [];
+            const maxLength = Math.max(userMsgs.length, systemMsgs.length);
+            
+            for (let i = 0; i < maxLength; i++) {
+              // 添加用户消息
+              if (i < userMsgs.length && userMsgs[i]?.trim()) {
+                allMessages.push({
+                  type: 'user',
+                  content: userMsgs[i].trim()
+                });
+              }
+              
+              // 添加系统消息
+              if (i < systemMsgs.length && systemMsgs[i]?.text?.trim()) {
+                allMessages.push({
+                  type: 'assistant',
+                  content: systemMsgs[i].text.trim()
+                });
+              }
+            }
+            
+            // 发送每条历史消息
+            allMessages.forEach((message, index) => {
+              if (message.content && message.content.length > 0) {
+                const conversationItem = {
+                  type: "conversation.item.create",
+                  item: {
+                    type: "message",
+                    role: message.type,
+                    content: [{
+                      type: "text",
+                      text: message.content
+                    }]
+                  }
+                };
+                
+                dc.send(JSON.stringify(conversationItem));
+                log(`📝 发送历史消息 ${index + 1}/${allMessages.length}: ${message.type} - ${message.content.substring(0, 50)}...`);
+              }
+            });
+            
+            log(`✅ 对话历史发送完成，共 ${allMessages.length} 条消息`);
+          } catch (error) {
+            log(`❌ 发送对话历史时出错: ${error}`);
+          }
+        } else {
+          log("📚 无历史对话需要发送");
+        }
       };
 
       dc.onmessage = (e) => {
@@ -131,10 +229,32 @@ export default function MicrophoneButton({
           log(`⬅️ ${data.type}`);
           
           // 处理不同类型的消息
-          if (data.type === 'response.audio.delta' && data.delta) {
+          if (data.type === 'input_audio_buffer.speech_stopped') {
+            log("🎤 用户停止说话");
+          } else if (data.type === 'conversation.item.input_audio_transcription.completed') {
+            // 用户语音转录完成
+            if (data.transcript && onUserTranscription) {
+              log(`👤 用户说: ${data.transcript}`);
+              onUserTranscription(data.transcript);
+            }
+          } else if (data.type === 'response.audio_transcript.delta') {
+            // AI响应文本增量更新
+            if (data.delta) {
+              currentResponseTextRef.current += data.delta;
+              log(`🤖 AI回复增量: ${data.delta}`);
+            }
+          } else if (data.type === 'response.audio_transcript.done') {
+            // AI响应文本完成
+            const fullText = currentResponseTextRef.current;
+            if (fullText && onAssistantResponse) {
+              log(`🤖 AI完整回复: ${fullText}`);
+              onAssistantResponse(fullText);
+            }
+            // 重置累积文本
+            currentResponseTextRef.current = "";
+          } else if (data.type === 'response.audio.delta' && data.delta) {
             // 处理音频数据 - 这里可以根据需要进一步处理
-          } else if (data.type === 'response.text.delta' && data.delta) {
-            log(`💬 回复: ${data.delta}`);
+            log("🎵 收到音频增量");
           } else if (data.type === 'error') {
             log(`❌ 错误: ${data.error?.message || '未知错误'}`);
             setError(data.error?.message || '发生未知错误');
