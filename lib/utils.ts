@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === "production" 
     ? "https://dev.airag.click/" 
-    : "http://3.113.243.125:5006/",
+    : "http://176.32.79.7:5006/",
   withCredentials: false,
   headers: {
     "Content-Type": "application/json",
@@ -53,4 +53,18 @@ export const post = async (url: string, options?: any): Promise<any> => {
   
   const response = await axiosInstance.post(url, options, config);
   return response.data;
+};
+
+// 流式请求函数，复用现有的配置
+export const postStream = async (url: string, options?: any): Promise<Response> => {
+  const token = localStorage.getItem("token");
+  
+  return fetch(`${axiosInstance.defaults.baseURL}${url}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    },
+    body: JSON.stringify(options),
+  });
 };

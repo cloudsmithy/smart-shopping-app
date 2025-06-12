@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Mic } from "lucide-react";
+import { createRealtimeSession } from "@/api/ai";
 import type React from "react";
 
 interface MicrophoneButtonProps {
@@ -16,136 +17,200 @@ export default function MicrophoneButton({
   onAudioRecorded,
   isProcessing = false,
 }: MicrophoneButtonProps) {
-
   const [isRecording, setIsRecording] = useState(false);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logging, setLogging] = useState<string[]>([]);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  // WebRTC refs
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
-  // Initialize audio context
+  const log = (msg: string) => {
+    console.log(msg);
+    setLogging(prev => [...prev, msg]);
+  };
+
+  // Cleanup function
+  const cleanup = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    
+    if (dcRef.current) {
+      dcRef.current.close();
+      dcRef.current = null;
+    }
+    
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    
+    if (audioRef.current) {
+      audioRef.current.srcObject = null;
+    }
+    
+    setIsRecording(false);
+    setIsConnecting(false);
+    setLogging([]);
+  };
+
   useEffect(() => {
-    const context = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
-    setAudioContext(context);
-
-    return () => {
-      if (audioStream) {
-        audioStream.getTracks().forEach((track) => track.stop());
-      }
-      if (context.state !== "closed") {
-        context.close();
-      }
-    };
+    return cleanup;
   }, []);
 
-  // Start recording function
-  const startRecording = async () => {
+  const startRealtimeSession = async () => {
     try {
       setError(null);
+      setIsConnecting(true);
+      setLogging([]);
+      
+      log("🚀 开始建立实时语音会话...");
 
-      if (!audioContext) {
-        throw new Error("Audio context not initialized");
-      }
+      // ① 从后端获取 ephemeral key
+      const { session_id, ephemeral_key } = await createRealtimeSession();
+      log(`🆗 Session ${session_id} 获取成功`);
 
-      // Resume audio context if suspended
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
+      // ② 初始化 WebRTC
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
-
-      // Create media recorder
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+      // 收到模型返回的音频 track
+      pc.ontrack = (ev) => {
+        log("🎵 收到音频流");
+        if (audioRef.current) {
+          audioRef.current.srcObject = ev.streams[0];
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        // Process recorded audio
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
-        });
-        audioChunksRef.current = [];
+      // 连接状态监听
+      pc.onconnectionstatechange = () => {
+        log(`📡 连接状态: ${pc.connectionState}`);
+        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          setError("连接失败，请重试");
+          cleanup();
+        }
+      };
 
-        // Create File object and send to parent
-        if (audioBlob.size > 0 && onAudioRecorded) {
-          try {
-            const audioFile = new File([audioBlob], "recording.wav", {
-              type: "audio/wav",
-            });
-            onAudioRecorded(audioFile);
-          } catch (error) {
-            console.error("Error creating audio file:", error);
+      // 建立数据通道
+      const dc = pc.createDataChannel("realtime-channel");
+      dcRef.current = dc;
+
+      dc.onopen = () => {
+        log("📡 数据通道已打开");
+        setIsConnecting(false);
+        setIsRecording(true);
+        
+        // 发送会话配置
+        const sessionUpdate = {
+          type: "session.update",
+          session: { 
+            instructions: "你是一位耐心、专业的中文购物助理。请用简洁、友好的语气回答用户关于商品的问题。",
+            voice: "alloy",
+            input_audio_format: "pcm16",
+            output_audio_format: "pcm16",
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 200
+            }
           }
+        };
+        dc.send(JSON.stringify(sessionUpdate));
+        log("➡️ 会话配置已发送");
+      };
+
+      dc.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          log(`⬅️ ${data.type}`);
+          
+          // 处理不同类型的消息
+          if (data.type === 'response.audio.delta' && data.delta) {
+            // 处理音频数据 - 这里可以根据需要进一步处理
+          } else if (data.type === 'response.text.delta' && data.delta) {
+            log(`💬 回复: ${data.delta}`);
+          } else if (data.type === 'error') {
+            log(`❌ 错误: ${data.error?.message || '未知错误'}`);
+            setError(data.error?.message || '发生未知错误');
+          }
+        } catch (err) {
+          log(`⬅️ ${e.data}`);
         }
       };
 
-      // Start recording
-      mediaRecorder.start();
-      setIsRecording(true);
+      dc.onerror = (error) => {
+        log(`❌ 数据通道错误: ${error}`);
+        setError("数据通道连接失败");
+      };
+
+      // ③ 采集麦克风
+      const localStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 24000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      localStreamRef.current = localStream;
+      localStream.getAudioTracks().forEach(track => pc.addTrack(track, localStream));
+      log("🎤 麦克风已连接");
+
+      // ④ SDP 握手
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const webrtcURL = `https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03`;
+
+      const answerSDP = await fetch(webrtcURL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${ephemeral_key}`,
+          "Content-Type": "application/sdp"
+        },
+        body: offer.sdp
+      }).then(r => r.text());
+
+      await pc.setRemoteDescription({ type: "answer", sdp: answerSDP });
+      log("✅ WebRTC 连接已建立");
+
     } catch (err) {
-      console.error("Error starting recording:", err);
-      setError("无法访问麦克风，请确保已授予麦克风权限。");
+      console.error("启动实时会话失败:", err);
+      setError(err instanceof Error ? err.message : "无法建立语音连接，请检查网络和麦克风权限");
+      setIsConnecting(false);
+      cleanup();
     }
   };
 
-  // Stop recording function
-  const stopRecording = (shouldSave: boolean) => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
-    }
-
-    if (audioStream) {
-      audioStream.getTracks().forEach((track) => track.stop());
-      setAudioStream(null);
-    }
-
-    setIsRecording(false);
-
-    if (!shouldSave) {
-      // Clear recorded chunks if not saving
-      audioChunksRef.current = [];
-    }
+  const stopRealtimeSession = () => {
+    log("🔚 正在关闭会话...");
+    cleanup();
   };
 
   const handleClick = () => {
     if (isRecording) {
-      // 如果正在录音，点击按钮停止录音
-      stopRecording(true);
-    } else {
-      // 如果没有录音，点击按钮开始录音
-      startRecording();
+      stopRealtimeSession();
+    } else if (!isConnecting) {
+      startRealtimeSession();
     }
-  };
-
-  // 按钮样式
-  const buttonStyle = {
-    transform: "scale(1)",
-    transition: "transform 0.2s ease",
   };
 
   return (
     <>
-      {/* 全屏遮罩和录音提示 - 使用Portal渲染到body */}
-      {isRecording && typeof window !== 'undefined' && createPortal(
+      {/* 全屏遮罩和录音提示 */}
+      {(isRecording || isConnecting) && typeof window !== 'undefined' && createPortal(
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center"
-          style={{
-            pointerEvents: 'auto',
-          }}
+          style={{ pointerEvents: 'auto' }}
         >
-          <div className="flex flex-col items-center space-y-8">
+          <div className="flex flex-col items-center space-y-8 max-w-md mx-4">
             {/* 录音动画圆圈 */}
             <div className="relative">
               <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
@@ -156,47 +221,66 @@ export default function MicrophoneButton({
                 </div>
               </div>
               {/* 录音脉冲效果 */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-32 h-32 bg-blue-500/20 rounded-full animate-ping" />
-              </div>
+              {isRecording && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-32 h-32 bg-blue-500/20 rounded-full animate-ping" />
+                </div>
+              )}
             </div>
             
             {/* 提示文字 */}
             <div className="text-center space-y-4">
               <div className="space-y-2">
-                <p className="text-white text-xl font-medium">语音对话中...</p>
+                <p className="text-white text-xl font-medium">
+                  {isConnecting ? "正在连接..." : "实时语音对话中..."}
+                </p>
+                {isConnecting && (
+                  <p className="text-white/70 text-sm">请稍候，正在建立连接</p>
+                )}
               </div>
               
-              {/* 取消录音按钮 */}
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    stopRecording(false); // 不保存录音
-                  }}
-                  className="w-12 h-12 bg-red-500/20 hover:bg-red-500/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-200 border border-red-500/30"
-                  style={{ pointerEvents: 'auto' }}
-                  aria-label="取消录音"
-                >
-                <svg 
-                  className="w-6 h-6 text-white" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M6 18L18 6M6 6l12 12" 
-                  />
-                                 </svg>
-               </button>
-             </div>
-           </div>
+              {/* 日志显示（开发时可见） */}
+              {process.env.NODE_ENV === 'development' && logging.length > 0 && (
+                <div className="bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                  <pre className="text-xs text-white/80 text-left">
+                    {logging.slice(-5).join('\n')}
+                  </pre>
+                </div>
+              )}
+              
+              {/* 取消按钮 */}
+              {!isConnecting && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={stopRealtimeSession}
+                    className="w-12 h-12 bg-red-500/20 hover:bg-red-500/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-200 border border-red-500/30"
+                    style={{ pointerEvents: 'auto' }}
+                    aria-label="结束对话"
+                  >
+                    <svg 
+                      className="w-6 h-6 text-white" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M6 18L18 6M6 6l12 12" 
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>,
         document.body
       )}
+
+      {/* 隐藏的音频元素用于播放AI回复 */}
+      <audio ref={audioRef} autoPlay style={{ display: 'none' }} />
 
       <div className="relative">
         {error && (
@@ -219,19 +303,16 @@ export default function MicrophoneButton({
           className={`w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/30 transition-all duration-200 relative ${
             isRecording ? 'z-[9998]' : 'z-50'
           } ${
-            isProcessing ? "opacity-50 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-800 hover:shadow-2xl hover:shadow-blue-500/40"
+            isProcessing || isConnecting ? "opacity-50 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-800 hover:shadow-2xl hover:shadow-blue-500/40"
           }`}
-          style={{
-            ...buttonStyle,
-            backgroundColor: '#2563eb', // fallback color
-          }}
+          style={{ backgroundColor: '#2563eb' }}
           onClick={isProcessing ? undefined : handleClick}
           disabled={isProcessing}
-          aria-label="录音按钮"
+          aria-label={isRecording ? "结束对话" : isConnecting ? "连接中" : "开始语音对话"}
         >
           <Mic
             className={`w-7 h-7 ${
-              isRecording || isProcessing ? "animate-pulse" : ""
+              isRecording || isConnecting || isProcessing ? "animate-pulse" : ""
             }`}
             style={{color: '#ffffff'}}
           />

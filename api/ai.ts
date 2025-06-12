@@ -1,4 +1,4 @@
-import { post } from "@/lib/utils";
+import { post, postStream } from "@/lib/utils";
 
 // 用户认证相关
 export const initUser = (deviceId: string) => {
@@ -38,9 +38,28 @@ export const uploadPhoto = (photo: File) => {
   return post("/api/photo/upload", formData);
 };
 
+// 实时语音对话相关
+export interface RealtimeSessionResponse {
+  session_id: string;
+  ephemeral_key: string;
+}
+
+export const createRealtimeSession = (): Promise<RealtimeSessionResponse> => {
+  return post("/api/realtime/session");
+};
+
 export const uploadAudio = (audio: File) => {
   const formData = new FormData();
   formData.append("audio", audio);
 
   return post("/api/photo/upload-audio", formData);
+};
+
+// 购物指南接口 - 支持流式返回
+export interface ShoppingGuideParams {
+  question: string;
+}
+
+export const getShoppingGuide = (params: ShoppingGuideParams): Promise<Response> => {
+  return postStream("/api/shopping/guides", params);
 };
