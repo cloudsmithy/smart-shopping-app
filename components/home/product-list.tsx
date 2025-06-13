@@ -1,4 +1,5 @@
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ProductItem {
   name: string;
@@ -11,11 +12,22 @@ interface ProductListProps {
   onLoadMore?: () => void;
 }
 
-export function ProductList({ products, onItemClick, onLoadMore }: ProductListProps) {
+export function ProductList({ products, onItemClick }: ProductListProps) {
+  const [showAll, setShowAll] = useState(false);
+  const initialDisplayCount = 3;
+  
+  // 决定要显示的产品
+  const displayedProducts = showAll ? products : products.slice(0, initialDisplayCount);
+  const hasMoreProducts = products.length > initialDisplayCount;
+
+  const handleToggleShowMore = () => {
+    setShowAll(!showAll);
+  };
+
   return (
     <div className="flex-1 overflow-auto px-6 mt-2 pb-6">
       <div className="space-y-3">
-        {products.map((item, index) => (
+        {displayedProducts.map((item, index) => (
           <button
             key={index}
             type="button"
@@ -31,16 +43,25 @@ export function ProductList({ products, onItemClick, onLoadMore }: ProductListPr
         ))}
       </div>
       
-      {/* <div className="flex justify-center mt-6">
-        <button 
-          type="button"
-          className="text-sm text-slate-500 flex items-center hover:text-slate-700 transition-colors duration-200 px-4 py-2 rounded-full hover:bg-slate-100/60 group"
-          onClick={onLoadMore}
-        >
-          <span className="font-medium">更多</span>
-          <ChevronDown className="w-4 h-4 ml-2 group-hover:translate-y-0.5 transition-transform" />
-        </button>
-      </div> */}
+      {/* 只有当产品数量大于初始显示数量时才显示按钮 */}
+      {hasMoreProducts && (
+        <div className="flex justify-center mt-6">
+          <button 
+            type="button"
+            className="text-sm text-slate-500 flex items-center hover:text-slate-700 transition-colors duration-200 px-4 py-2 rounded-full hover:bg-slate-100/60 group"
+            onClick={handleToggleShowMore}
+          >
+            <span className="font-medium">
+              {showAll ? '收起' : '更多'}
+            </span>
+            {showAll ? (
+              <ChevronUp className="w-4 h-4 ml-2 group-hover:-translate-y-0.5 transition-transform" />
+            ) : (
+              <ChevronDown className="w-4 h-4 ml-2 group-hover:translate-y-0.5 transition-transform" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

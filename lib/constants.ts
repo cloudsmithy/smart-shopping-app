@@ -29,12 +29,36 @@ export const COLORS = {
   cardBackground: "#f5f5f5",
 } as const;
 
-// 产品数据
-export const SAMPLE_PRODUCTS = [
-  { name: "安全的食用油", description: "选购指南 今日在售" },
-  { name: "无添加剂的深海鱼", description: "选购指南 今日在售" },
-  { name: "正宗的五常大米", description: "选购指南 今日在售" },
-];
+// 产品数据 - 按类别分组
+export const SAMPLE_PRODUCTS = {
+  "daily-food": [
+    { name: "安全的食用油", description: "选购指南 今日在售" },
+    { name: "无添加剂的深海鱼", description: "选购指南 今日在售" },
+    { name: "正宗的五常大米", description: "选购指南 今日在售" },
+    { name: "优质面粉", description: "选购指南 今日在售" },
+    { name: "新鲜鸡蛋", description: "选购指南 今日在售" },
+    { name: "纯牛奶", description: "选购指南 今日在售" },
+  ],
+  "snacks-drinks": [
+    { name: "低糖酸奶", description: "选购指南 今日在售" },
+    { name: "坚果零食", description: "选购指南 今日在售" },
+    { name: "无添加果汁", description: "选购指南 今日在售" },
+    { name: "全麦饼干", description: "选购指南 今日在售" },
+    { name: "天然蜂蜜", description: "选购指南 今日在售" },
+    { name: "功能饮料", description: "选购指南 今日在售" },
+  ],
+  "seasonal-ingredients": [
+    { name: "时令蔬菜", description: "选购指南 今日在售" },
+    { name: "应季水果", description: "选购指南 今日在售" },
+    { name: "新鲜菌菇", description: "选购指南 今日在售" },
+    { name: "海鲜水产", description: "选购指南 今日在售" },
+    { name: "有机豆制品", description: "选购指南 今日在售" },
+    { name: "冬季滋补品", description: "选购指南 今日在售" },
+  ],
+} as const;
+
+// 获取所有产品的扁平化数组（向后兼容）
+export const ALL_SAMPLE_PRODUCTS = Object.values(SAMPLE_PRODUCTS).flat();
 
 // 路由常量
 export const ROUTES = {

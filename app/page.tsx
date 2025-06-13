@@ -54,6 +54,20 @@ export default function HomePage() {
     console.log("Load more clicked");
   };
 
+  // 根据选中的类别获取对应的产品
+  const getCurrentCategoryProducts = () => {
+    const categoryMap = {
+      "日用食品": "daily-food",
+      "零食饮料": "snacks-drinks", 
+      "时令食材": "seasonal-ingredients"
+    } as const;
+    
+    const categoryKey = categoryMap[selectedCategory as keyof typeof categoryMap];
+    const products = categoryKey ? SAMPLE_PRODUCTS[categoryKey] : SAMPLE_PRODUCTS["daily-food"];
+    // 将只读数组转换为可变数组
+    return [...products];
+  };
+
   return (
     <PageContainer>      
       <LocationDisplay 
@@ -123,7 +137,7 @@ export default function HomePage() {
       </div>
 
       <ProductList 
-        products={SAMPLE_PRODUCTS}
+        products={getCurrentCategoryProducts()}
         onItemClick={handleProductClick}
         onLoadMore={handleLoadMore}
       />
