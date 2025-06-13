@@ -1,4 +1,4 @@
-import { post, postStream } from "@/lib/utils";
+import { post, postStream, getWebSocketUrl } from "@/lib/utils";
 
 // 用户认证相关
 export const initUser = (deviceId: string) => {
@@ -41,11 +41,14 @@ export const uploadPhoto = (photo: File) => {
 // 实时语音对话相关
 export interface RealtimeSessionResponse {
   session_id: string;
-  ephemeral_key: string;
 }
 
 export const createRealtimeSession = (): Promise<RealtimeSessionResponse> => {
   return post("/api/realtime/session");
+};
+
+export const getRealtimeWsUrl = (sessionId: string) => {
+  return getWebSocketUrl(`/api/realtime/ws/${sessionId}`);
 };
 
 export const uploadAudio = (audio: File) => {
