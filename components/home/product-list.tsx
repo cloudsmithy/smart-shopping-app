@@ -31,7 +31,7 @@ export function ProductList({ products, onItemClick, onLoadMore }: ProductListPr
         ))}
       </div>
       
-      <div className="flex justify-center mt-6">
+      {/* <div className="flex justify-center mt-6">
         <button 
           type="button"
           className="text-sm text-slate-500 flex items-center hover:text-slate-700 transition-colors duration-200 px-4 py-2 rounded-full hover:bg-slate-100/60 group"
@@ -40,7 +40,7 @@ export function ProductList({ products, onItemClick, onLoadMore }: ProductListPr
           <span className="font-medium">更多</span>
           <ChevronDown className="w-4 h-4 ml-2 group-hover:translate-y-0.5 transition-transform" />
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

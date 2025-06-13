@@ -392,9 +392,15 @@ function ChatContent() {
       选购建议: "请提供这类商品的选购建议，以及推荐的品牌。",
     };
 
-    const query = suggestions[suggestionType as keyof typeof suggestions];
+    const userQuery = suggestions[suggestionType as keyof typeof suggestions];
 
-    if (!query) return;
+    if (!userQuery) return;
+
+    let apiQuery = userQuery;
+    // 如果有图片识别结果，则加入上下文
+    if (photoData?.recognitionResult) {
+      apiQuery = `${photoData.recognitionResult}，${userQuery}`;
+    }
 
     try {
       setIsProcessingAudio(true);
@@ -404,17 +410,17 @@ function ChatContent() {
       timeoutsRef.current = [];
 
       // 用户点击建议，先将问题加入对话流
-      setUserMessages((prev) => [...prev, query]);
+      setUserMessages((prev) => [...prev, userQuery]);
       const userMessage: ConversationMessage = {
         id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: "user",
-        content: query,
+        content: userQuery,
         timestamp: Date.now(),
       };
       setConversationMessages((prev) => [...prev, userMessage]);
 
       // 调用 getShoppingGuide，流式处理响应
-      const response = await getShoppingGuide({ question: query });
+      const response = await getShoppingGuide({ question: apiQuery });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

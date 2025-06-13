@@ -20,7 +20,8 @@ interface MicrophoneButtonProps {
     };
     userMessages?: string[];
     systemMessages?: Array<{
-      text: string;
+      text?: string;
+      content?: string;
       audioUrl?: string;
     }>;
   };
@@ -51,10 +52,62 @@ export default function MicrophoneButton({
   const audioRef = useRef<HTMLAudioElement>(null);
   // 用于累积响应文本
   const currentResponseTextRef = useRef<string>("");
+  // 用于日志容器自动滚动
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
   const log = (msg: string) => {
     console.log(msg);
     setLogging((prev) => [...prev, msg]);
+  };
+
+  // 自动滚动到日志底部
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logging]);
+
+  // 过滤和格式化日志显示
+  const getDisplayLogs = () => {
+    const userFriendlyLogs = logging
+      .filter(log => 
+        log.includes("👤 用户说:") || 
+        log.includes("🤖 AI完整回复:") ||
+        log.includes("🚀 开始建立") ||
+        log.includes("🆗 Session") ||
+        log.includes("🎤 麦克风已连接") ||
+        log.includes("📡 WebSocket 连接已打开") ||
+        log.includes("🔚 正在关闭会话") ||
+        (process.env.NODE_ENV === "development")
+      )
+      .map(log => {
+        // 简化显示文本，让它更友好
+        if (log.includes("👤 用户说:")) {
+          return log.replace("👤 用户说:", "您说：");
+        }
+        if (log.includes("🤖 AI完整回复:")) {
+          return log.replace("🤖 AI完整回复:", "AI回复：");
+        }
+        if (log.includes("🚀 开始建立实时语音会话")) {
+          return "🚀 正在连接语音服务...";
+        }
+        if (log.includes("🆗 Session") && log.includes("获取成功")) {
+          return "✅ 连接成功";
+        }
+        if (log.includes("🎤 麦克风已连接")) {
+          return "🎤 麦克风准备就绪";
+        }
+        if (log.includes("📡 WebSocket 连接已打开")) {
+          return "📡 语音对话已开始";
+        }
+        if (log.includes("🔚 正在关闭会话")) {
+          return "👋 对话结束";
+        }
+        return log;
+      })
+      .slice(-8); // 显示最近8条消息
+    
+    return userFriendlyLogs;
   };
 
   // Cleanup function
@@ -220,25 +273,34 @@ export default function MicrophoneButton({
               if (i < userMsgs.length && userMsgs[i]?.trim()) {
                 allMessages.push({ type: "user", content: userMsgs[i].trim() });
               }
-              if (i < systemMsgs.length && systemMsgs[i]?.text?.trim()) {
-                allMessages.push({
-                  type: "assistant",
-                  content: systemMsgs[i].text.trim(),
-                });
+              const systemMsg = i < systemMsgs.length ? systemMsgs[i] : null;
+              if (systemMsg) {
+                const content = (systemMsg.content || systemMsg.text || "").trim();
+                if (content) {
+                  allMessages.push({
+                    type: "assistant",
+                    content: content,
+                  });
+                }
               }
             }
 
             allMessages.forEach((message, index) => {
               if (message.content && message.content.length > 0) {
+                // 根据消息角色动态设置 content 类型
+                const contentType = message.type === "user" ? "input_text" : "text";
+
                 const conversationItem = {
                   type: "conversation.item.create",
                   item: {
                     type: "message",
                     role: message.type,
-                    content: [{ type: "input_text", text: message.content }],
+                    content: [{ type: contentType, text: message.content }],
                   },
                 };
-                ws.send(JSON.stringify(conversationItem));
+                const payload = JSON.stringify(conversationItem);
+                log(`➡️ SENDING: ${payload}`);
+                ws.send(payload);
                 log(
                   `📝 发送历史消息 ${index + 1}/${allMessages.length}: ${
                     message.type
@@ -445,17 +507,29 @@ export default function MicrophoneButton({
 
                 {/* 日志显示（重要信息） */}
                 {logging.length > 0 && (
-                  <div className="bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
-                    <pre className="text-xs text-white/80 text-left">
-                      {logging
-                        .filter(log => 
-                          log.includes("👤 用户说:") || 
-                          log.includes("🤖 AI完整回复:") ||
-                          (process.env.NODE_ENV === "development")
-                        )
-                        .slice(-5)
-                        .join("\n")}
-                    </pre>
+                  <div className="w-80 max-w-full bg-black/20 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
+                    {/* 标题栏 */}
+                    <div className="px-4 py-2 bg-white/5 border-b border-white/10">
+                      <p className="text-white/90 text-sm font-medium">对话状态</p>
+                    </div>
+                    
+                    {/* 日志内容 */}
+                    <div 
+                      ref={logContainerRef}
+                      className="max-h-40 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
+                      style={{
+                        scrollBehavior: 'smooth'
+                      }}
+                    >
+                      {getDisplayLogs().map((log, index) => (
+                        <div 
+                          key={index} 
+                          className="text-white/80 text-sm leading-relaxed break-words"
+                        >
+                          {log}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
