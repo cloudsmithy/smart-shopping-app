@@ -235,7 +235,7 @@ export default function MicrophoneButton({
                   item: {
                     type: "message",
                     role: message.type,
-                    content: [{ type: "text", text: message.content }],
+                    content: [{ type: "input_text", text: message.content }],
                   },
                 };
                 ws.send(JSON.stringify(conversationItem));
@@ -443,15 +443,21 @@ export default function MicrophoneButton({
                   )}
                 </div>
 
-                {/* 日志显示（开发时可见） */}
-                {process.env.NODE_ENV === "development" &&
-                  logging.length > 0 && (
-                    <div className="bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
-                      <pre className="text-xs text-white/80 text-left">
-                        {logging.slice(-5).join("\n")}
-                      </pre>
-                    </div>
-                  )}
+                {/* 日志显示（重要信息） */}
+                {logging.length > 0 && (
+                  <div className="bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                    <pre className="text-xs text-white/80 text-left">
+                      {logging
+                        .filter(log => 
+                          log.includes("👤 用户说:") || 
+                          log.includes("🤖 AI完整回复:") ||
+                          (process.env.NODE_ENV === "development")
+                        )
+                        .slice(-5)
+                        .join("\n")}
+                    </pre>
+                  </div>
+                )}
 
                 {/* 取消按钮 */}
                 {!isConnecting && (
