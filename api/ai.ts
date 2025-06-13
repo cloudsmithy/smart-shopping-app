@@ -44,11 +44,11 @@ export interface RealtimeSessionResponse {
 }
 
 export const createRealtimeSession = (): Promise<RealtimeSessionResponse> => {
-  return post("/api/realtime/session");
+  return post("/ai/realtime/session");
 };
 
 export const getRealtimeWsUrl = (sessionId: string) => {
-  return getWebSocketUrl(`/api/realtime/ws/${sessionId}`);
+  return getWebSocketUrl(`/ai/realtime/ws/${sessionId}`);
 };
 
 export const uploadAudio = (audio: File) => {
