@@ -373,37 +373,99 @@ function ChatContent() {
 
     try {
       setIsProcessingAudio(true);
-      
-      const recognizeResponse = await recognizeUrl({
-        fileinfo: photoData?.imageUrl || "",
-        query: query
-      });
-      
-      if (recognizeResponse.result?.text_result) {
-        // Add system message
-        const systemMessage: SystemMessage = {
-          text: recognizeResponse.result.text_result,
-          audioUrl: recognizeResponse.result.audio_url
-        };
-        setSystemMessages(prev => [...prev, systemMessage]);
-        
-        // 添加到统一对话流
+
+      // 清理之前的timeout
+      timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      timeoutsRef.current = [];
+
+      // 用户点击建议，先将问题加入对话流
+      setUserMessages(prev => [...prev, query]);
+      const userMessage: ConversationMessage = {
+        id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'user',
+        content: query,
+        timestamp: Date.now()
+      };
+      setConversationMessages(prev => [...prev, userMessage]);
+
+      // 调用 getShoppingGuide，流式处理响应
+      const response = await getShoppingGuide({ question: query });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let currentMessageIndex = -1;
+      let accumulatedText = '';
+      const systemTimeout = setTimeout(() => {
+        setSystemMessages(prev => {
+          const newMessage: SystemMessage = { text: '' };
+          currentMessageIndex = prev.length;
+          return [...prev, newMessage];
+        });
+        // 为统一对话流创建对应的消息
         const assistantMessage: ConversationMessage = {
           id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           type: 'assistant',
-          content: recognizeResponse.result.text_result,
-          audioUrl: recognizeResponse.result.audio_url,
+          content: '',
           timestamp: Date.now()
         };
         setConversationMessages(prev => [...prev, assistantMessage]);
-        
-        // Play audio if available
-        if (recognizeResponse.result.audio_url) {
-          playAudio(recognizeResponse.result.audio_url);
+      }, 500);
+      timeoutsRef.current.push(systemTimeout);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          try {
+            const data = JSON.parse(line);
+            if (data.delta) {
+              accumulatedText += data.delta;
+              setSystemMessages(prev => {
+                if (currentMessageIndex >= 0) {
+                  const updated = [...prev];
+                  updated[currentMessageIndex] = {
+                    ...updated[currentMessageIndex],
+                    text: accumulatedText
+                  };
+                  return updated;
+                }
+                return prev;
+              });
+              setConversationMessages(prev => {
+                const updated = [...prev];
+                const lastMessage = updated[updated.length - 1];
+                if (lastMessage && lastMessage.type === 'assistant') {
+                  updated[updated.length - 1] = {
+                    ...lastMessage,
+                    content: accumulatedText
+                  };
+                }
+                return updated;
+              });
+            }
+            if (data.done) {
+              break;
+            }
+          } catch (parseError) {
+            console.error('Error parsing JSON:', parseError, 'Line:', line);
+          }
         }
       }
     } catch (error) {
       console.error('Error processing suggestion:', error);
+      const errorTimeout = setTimeout(() => {
+        setSystemMessages(prev => [...prev, { 
+          text: "抱歉，获取购物指南时出现了问题，请稍后再试。" 
+        }]);
+      }, 500);
+      timeoutsRef.current.push(errorTimeout);
     } finally {
       setIsProcessingAudio(false);
     }

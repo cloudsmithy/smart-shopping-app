@@ -9,7 +9,9 @@ export function cn(...inputs: ClassValue[]) {
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === "production" 
     ? "https://dev.airag.click/" 
-    : "http://176.32.79.7:5006/",
+    // : "http://3.113.243.125:5006/", // poc
+    // : "http://176.32.79.7:5006/", // prod
+    : "https://dev.airag.click/",
   withCredentials: false,
   headers: {
     "Content-Type": "application/json",

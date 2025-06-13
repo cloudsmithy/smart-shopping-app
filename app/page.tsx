@@ -55,9 +55,7 @@ export default function HomePage() {
   };
 
   return (
-    <PageContainer>
-      <PageHeader title="智能购物" />
-      
+    <PageContainer>      
       <LocationDisplay 
         location={currentLocation}
         onLocationChange={handleLocationChange}
